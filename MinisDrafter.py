@@ -1,10 +1,11 @@
 from tkinter import *
 from tkinter.filedialog import askopenfilename
 from tkinter import filedialog
-from PIL import Image,ImageTk,ImageDraw
-
+#from PIL import Image,ImageTk,ImageDraw
+from PIL import Image, ImageDraw, ImageTk, ImageFont,ImageChops
 from math import cos, sin, sqrt, radians, floor
 import math
+import datetime
 
 import random
 import os
@@ -12,6 +13,8 @@ import ast
 
 import sqlite3
 from sqlite3 import Error
+
+from fpdf import FPDF
 # class Controls_GearGen(Frame):
 
 
@@ -19,17 +22,7 @@ class Main(Tk):
     def __init__(self):
         Tk.__init__(self)
         self.title("SW Minis Drafter")
-        self.geometry("1500x650")
-        """OK, here is the plan... I'm going to injest
-        This quality gear generator with...
-        Magic Item Generator...
-        Crafting tracker...
-
-        Player version that tracks crafting progress?
-        DM version for generating gear
-
-        you need a system for how the 'minor quirks' are adjusted based on YOU making the item.
-        """
+        self.geometry("1130x2000")
         mainFrame = Frame(self)
         mainFrame.grid(column=0, row=0)
 
@@ -41,7 +34,7 @@ class Main(Tk):
 
         self.SETS = [["ae", "Alliance and Empire"],
                 ["bh", "Bounty Hunters"],
-                ["boh", "The Battle of Hoth"],
+                ["ae", "Alliance and Empire"],
                 ["cotf", "Champions of the Force"],
                 ["cs", "Clone Strike"],
                 ["cw", "The Clone Wars"],
@@ -83,32 +76,14 @@ class Main(Tk):
         go = Button(controlFrame, text="Go", command=lambda: generate(self.conn))
         go.grid(column=6, row=0)
 
-        # setting up our frames
-
-        # self.frames = {}
-        # for F in (Controls_Editor, Controls_Generator):
-        #     page_name = F.__name__
-        #     frame = F(parent=mainFrame, controller=self)
-        #     self.frames[page_name] = frame
-        #     frame.grid(row=0, column=0, sticky="nsew")
-        # self.show_frame("Controls_Generator")
-        # controlFrame = Frame(self)
-        # controlFrame.grid(column=0,row=0)
-
         width = 350
         height = 350
 
-        #self.can = Canvas(displayFrame, width=width, height=height, bg="#fffafa")
-        #self.can.grid(row=0, column=0)  # .pack()
         qty_packs.focus_set()
 
-        #vbar = Scrollbar(mainFrame, orient=VERTICAL)
-        #vbar.grid()
-        #vbar.config(command=self.can.yview)
-        #self.can.config(yscrollcommand=vbar.set)
 
 
-        database = "./SWminis.db"
+        database = "./DB/SWminis.db"
         self.conn = self.create_connection(database)
         self.rowcounts(self.conn)  # counts the max rowlength for each table.
 
@@ -122,14 +97,21 @@ class Main(Tk):
         def generate(conn):
             cur = conn.cursor()
             cardlist = []
+            pdf = FPDF()
+            pdf.set_font('Arial','B',10)
+
             for p in range(1,int(qty_packs.get())+1):
                 print ("opening pack",p)
+                pdf.add_page()
+
                 minilist = []
-                #if all sets selected_set = random.choice(self.setname)
-                selected_set = "Rebel Storm"
+                if var_set.get() == "Sets": selected_set = random.choice(self.setname)
+                else: selected_set = var_set.get()
+                #selected_set = "Rebel Storm"
                 for x in self.SETS:
                     if x[1] == selected_set: short = x[0]
-                print(short)
+                print(selected_set,short)
+
                 if var_rarity.get() == "Standard Pack":
 
                     cur.execute(
@@ -138,8 +120,10 @@ class Main(Tk):
                     cur.execute(
                         "SELECT \"id\", \"set\", \"name\" FROM minis_list WHERE \"SET\" = \""+selected_set+"\" AND \"rarity\" = \"uncommon\"")
                     uncommons = cur.fetchall()
+                    if random.choice([1,2,3]) == 1: rare="very rare"
+                    else: rare = "rare"
                     cur.execute(
-                        "SELECT \"id\", \"set\", \"name\" FROM minis_list WHERE \"SET\" = \""+selected_set+"\" AND \"rarity\" = \"rare\" OR \"rarity\" = \"very rare\"")
+                        "SELECT \"id\", \"set\", \"name\" FROM minis_list WHERE \"SET\" = \""+selected_set+"\" AND \"rarity\" = \""+rare+"\"")
                     rares = cur.fetchall()
                     for x in range (4):
                         mini = random.choice(commons)
@@ -150,37 +134,48 @@ class Main(Tk):
                         uncommons.remove(mini) # no duplicates
                         minilist.append(mini)
                     minilist.append(random.choice(rares))
-                    # print (minilist)
 
 
+                    #CREATES THE CARDS AND RENDERS THEM ON SCREEN
+                    rw=0
                     for x,i in enumerate(minilist):
                         card = ("./cards/"+short+"{:02d}".format(i[0])+".jpg")
                         im = Image.open(card)
                         width, height = im.size
                         imback = im.crop((width/2, 0, width, height))
                         imback = imback.resize((int(width / 4), int(height / 2)))
-
                         imfront = im.crop((0, 0, width/2, height))
                         cardlist.append(imback)
 
-                        imback.save("temp.png")
-
-                        load = Image.open("temp.png")
+                        imback.save(str(p)+"_"+str(x)+"temp.png")
+                        load = Image.open(str(p)+"_"+str(x)+"temp.png")
                         render = ImageTk.PhotoImage(load)
-
                         img = Label(self, image=render)
                         img.image = render
-                        img.grid(row=1,column=0)#img.place(x=0, y=0)
+                        col = x % 3
+                        if (x % 3 == 0): rw +=1
+                        img.grid(row=rw,column=col)
 
-                    print(cardlist)
-                        # Shows the image in image viewer
+                    #READS THE TEMPORARY PNGS CREATED AND PUTS THEM ON A PDF PAGE
+                    rw=0
+                    size = 65
+                    width=59
+                    height=width*1.39
+                    pdf.text(x=10, y=5, txt="Pack "+str(p)+" - "+str(selected_set))
+                    pdf.rect(x=75, y=191, w=width, h=height)
+                    pdf.rect(x=140,y=191, w=width, h=height)
+                    for x,i in enumerate(minilist):
+                        col = x % 3
+                        if (x % 3 == 0): rw += 1
+                        pdf.image(str(p)+"_"+str(x)+"temp.png",x=col*size+10,y=rw*size*1.39-80,w=width,h=height)  # , x=10, y=8, w=100)
+                        print (i)
+                        pdf.text(x=143, y=201+x*4, txt=str(i[2])+"  ["+str(i[0])+"]")
 
-                    preview = ImageTk.PhotoImage(Image.open("temp.png"))
-                    #ImageDraw.ImageDraw(imback)
-                    #imfront.show()
 
-                    #back = ImageTk.PhotoImage(imback)
-                    #self.can.create_image(10, 50, image=back, anchor=NW)
+
+            time = datetime.datetime.now()
+            time = (str(time)[-6:])
+            pdf.output("./packs/packname"+time+".pdf")
 
 
 
@@ -243,27 +238,13 @@ class Main(Tk):
             n += 1
         n = 0
         print (self.count)
-        # for x in (
-        # "layout_basic", "layout_coastal", "layout_rivers", "layout_confluence", "layout_estuary", "layout_wetland"):
-        #     cur.execute("SELECT COUNT(1) from " + x)
-        #     (self.layoutcount[n],) = cur.fetchone()
-        #     n += 1
-        # n = 0
-        # for x in ("generic", "good", "evil", "magical", "dwarven", "elven", "halfling", "orc"):
-        #     cur.execute("SELECT COUNT(1) from name_" + x + "_prefix")
-        #     (self.namecount[n],) = cur.fetchone()
-        #     cur.execute("SELECT COUNT(1) from name_" + x + "_center")
-        #     (self.namecount[n + 1],) = cur.fetchone()
-        #     cur.execute("SELECT COUNT(1) from name_" + x + "_suffix")
-        #     (self.namecount[n + 2],) = cur.fetchone()
-        #     n += 3
 
     #pretty confident this is too basic and also not used currently.
     def valuenames(self, conn, table, column, value):
-        cur = conn.cursor()
-        statement = ("SELECT * FROM " + table + " WHERE " + column + " = " + value)
-        cur.execute(statement)
-        return cur.fetchone()
+       cur = conn.cursor()
+       statement = ("SELECT * FROM " + table + " WHERE " + column + " = " + value)
+       cur.execute(statement)
+       return cur.fetchone()
 
 # As far as I can tell this is a pythony secure way to launch the main loop.
 if __name__ == "__main__":
