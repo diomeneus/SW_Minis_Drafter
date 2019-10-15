@@ -31,39 +31,74 @@ class Main(Tk):
 
         displayFrame = Frame(mainFrame)
         displayFrame.grid(column=0, row=1)
-
         self.SETS = [["ae", "Alliance and Empire"],
-                ["bh", "Bounty Hunters"],
-                ["ae", "Alliance and Empire"],
-                ["cotf", "Champions of the Force"],
-                ["cs", "Clone Strike"],
-                ["cw", "The Clone Wars"],
-                ["fu", "The Force Unleashed"],
-                ["gaw", "Galaxy at War"],
-                ["ie", "Imperial Entanglements"],
-                ["ja", "Jedi Academy"],
-                ["kotor", "Knights of the Old Republic"],
-                ["lotf", "Legacy of the Force"],
-                ["motf", "Masters of the Force"],
-                ["rots", "Revenge of the Sith"],
-                ["rs", "Rebel Storm"],
-                ["tdt", "Dark Times"],
-                ["uh", "Universe"]]
-        self.RARITY = ["Common","Uncommon","Rare","Very Rare"]
-        self.FACTIONS = ["Rebel","Imperial","The Old Republic","The New Republic","Sith","Republic","Seperatist","Yuuzhan Vong","Mandolorian","Fringe"]
+                     ["bh", "Bounty Hunters"],
+                     ["ae", "Alliance and Empire"],
+                     ["cotf", "Champions of the Force"],
+                     ["cs", "Clone Strike"],
+                     ["cw", "The Clone Wars"],
+                     ["fu", "The Force Unleashed"],
+                     ["gaw", "Galaxy at War"],
+                     ["ie", "Imperial Entanglements"],
+                     ["ja", "Jedi Academy"],
+                     ["kotor", "Knights of the Old Republic"],
+                     ["lotf", "Legacy of the Force"],
+                     ["motf", "Masters of the Force"],
+                     ["rots", "Revenge of the Sith"],
+                     ["rs", "Rebel Storm"],
+                     ["tdt", "Dark Times"],
+                     ["uh", "Universe"]]
+        self.RARITY = ["Common", "Uncommon", "Rare", "Very Rare"]
+        self.FACTIONS = ["Rebel", "Imperial", "The Old Republic", "The New Republic", "Sith", "Republic", "Seperatist",
+                         "Yuuzhan Vong", "Mandolorian", "Fringe"]
 
-        self.setname=[]
+        self.setname = []
         for x in (self.SETS):
             self.setname.append(x[1])
+        self.packtypes=["Standard Pack","Commons Only","Non Unique Only"]
 
-        var_set = StringVar(self)
-        var_set.set("Sets")  # default value
+        """eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"""
+
+        menubar = Menu(self)
+        setlist_menu = Menu(menubar)
+        pack_menu = Menu(menubar)
+
+        self.config(menu=menubar)
+
+        sm_list = []  # a list of submenus ***MAY BE AN OBSOLETE AND UNNEEDED VARIABLE***
+        setmenu_VarList = []  # a list containing lists of variables for checkbox states
+        packmenu_VarList = []
+
+
+        menubar.add_cascade(label="Sets", underline=0, menu=setlist_menu)
+        menubar.add_cascade(label="Pack Type", underline=0, menu=pack_menu)
+        #menubar.insert()
+        menubar.add_command(label="Go", underline=0, command=lambda: showcurrent())
+
+        for _ in enumerate(self.setname): setmenu_VarList.append(IntVar(self))
+        for i in setmenu_VarList:i.set(1)
+
+        setlist_menu.add_command(label="All", command=lambda: modAll(setmenu_VarList, 1))
+        setlist_menu.add_command(label="None", command=lambda: modAll(setmenu_VarList, 0))
+        setlist_menu.add_separator()
+        for index, i in enumerate(self.setname):
+            setlist_menu.add_checkbutton(label=i, variable=setmenu_VarList[index], onvalue=1, offvalue=0,
+                                command=lambda: refreshState())
+
+        for _ in enumerate(self.packtypes): packmenu_VarList.append(IntVar(self))
+        #for i in setmenu_VarList:i.set(1)
+        for index,i in enumerate(self.packtypes):
+            pack_menu.add_radiobutton(label=i,variable=packmenu_VarList[index], value=1)
+
+
+
         var_rarity = StringVar(self)
         var_rarity.set("Standard Pack")  # default value
         var_faction = StringVar(self)
         var_faction.set("Any")  # default value
 
-        OptionMenu(controlFrame, var_set, *self.setname).grid(column=0, row=0)
+        #OptionMenu(controlFrame, var_set, *self.setname).grid(column=0, row=0)
+
         OptionMenu(controlFrame, var_rarity, *self.RARITY).grid(column=1, row=0)
         OptionMenu(controlFrame, var_faction, *self.FACTIONS).grid(column=2, row=0)
 
@@ -75,6 +110,10 @@ class Main(Tk):
         qty_packs.insert(END, '1')
         go = Button(controlFrame, text="Go", command=lambda: generate(self.conn))
         go.grid(column=6, row=0)
+        ab = Button(controlFrame, text="AB", command=lambda: self.abilitychecker(self.conn,"special abilities"))
+        ab.grid(column=7, row=0)
+        fc = Button(controlFrame, text="FC", command=lambda: self.abilitychecker(self.conn,"force powers"))
+        fc.grid(column=8, row=0)
 
         width = 350
         height = 350
@@ -86,6 +125,10 @@ class Main(Tk):
         database = "./DB/SWminis.db"
         self.conn = self.create_connection(database)
         self.rowcounts(self.conn)  # counts the max rowlength for each table.
+
+        def modAll(var, state):
+            for index, i in enumerate(var):
+                var[index].set(state)
 
         def open_player():
             self.file_path = filedialog.askopenfilename()
@@ -100,16 +143,23 @@ class Main(Tk):
             pdf = FPDF()
             pdf.set_font('Arial','B',10)
 
+            """Grab the sets that are turned on"""
+            setsenabled = []
+            for x,i in enumerate(setmenu_VarList):
+                if i.get() == 1:
+                    setsenabled.append(self.setname[x])
+
+
+            print (setsenabled)
             for p in range(1,int(qty_packs.get())+1):
                 print ("opening pack",p)
                 pdf.add_page()
 
                 minilist = []
-                if var_set.get() == "Sets": selected_set = random.choice(self.setname)
-                else: selected_set = var_set.get()
-                #selected_set = "Rebel Storm"
+                selected_set = random.choice(setsenabled)
+                selected_set = "Rebel Storm"
                 for x in self.SETS:
-                    if x[1] == selected_set: short = x[0]
+                    if x[1] == selected_set: short = x[0] #a crude way to set the short form of your selected set
                 print(selected_set,short)
 
                 if var_rarity.get() == "Standard Pack":
@@ -143,14 +193,16 @@ class Main(Tk):
                         im = Image.open(card)
                         width, height = im.size
                         imback = im.crop((width/2, 0, width, height))
-                        imback = imback.resize((int(width / 4), int(height / 2)))
+
+                        #imback = imback.resize((int(width / 6), int(height / 3)))
                         imfront = im.crop((0, 0, width/2, height))
                         cardlist.append(imback)
 
                         imback.save(str(p)+"_"+str(x)+"temp.png")
                         load = Image.open(str(p)+"_"+str(x)+"temp.png")
                         render = ImageTk.PhotoImage(load)
-                        img = Label(self, image=render)
+                        #render_sm = render.subsample(2,2)
+                        img = Label(self, image=render,width=int(width / 6),height=int(height / 3))
                         img.image = render
                         col = x % 3
                         if (x % 3 == 0): rw +=1
@@ -159,15 +211,15 @@ class Main(Tk):
                     #READS THE TEMPORARY PNGS CREATED AND PUTS THEM ON A PDF PAGE
                     rw=0
                     size = 65
-                    width=59
+                    width=64
                     height=width*1.39
                     pdf.text(x=10, y=5, txt="Pack "+str(p)+" - "+str(selected_set))
-                    pdf.rect(x=75, y=191, w=width, h=height)
-                    pdf.rect(x=140,y=191, w=width, h=height)
+                    pdf.rect(x=73, y=191, w=width, h=height)
+                    pdf.rect(x=138,y=191, w=width, h=height)
                     for x,i in enumerate(minilist):
                         col = x % 3
                         if (x % 3 == 0): rw += 1
-                        pdf.image(str(p)+"_"+str(x)+"temp.png",x=col*size+10,y=rw*size*1.39-80,w=width,h=height)  # , x=10, y=8, w=100)
+                        pdf.image(str(p)+"_"+str(x)+"temp.png",x=col*size+8,y=rw*size*1.39-80,w=width,h=height)  # , x=10, y=8, w=100)
                         print (i)
                         pdf.text(x=143, y=201+x*4, txt=str(i[2])+"  ["+str(i[0])+"]")
 
@@ -188,6 +240,26 @@ class Main(Tk):
         except Error as e:
             print(e)
         return None
+
+    def abilitychecker(self,conn,check):
+        abilities =[]
+        cur = conn.cursor()
+
+        command =  "SELECT COUNT() FROM minis_list WHERE minis_list.\""+check+"\" is not NULL"
+        cur.execute(command)
+        count = cur.fetchone()[0]
+        print (count)
+
+        command = "SELECT minis_list.\""+check+"\" FROM minis_list WHERE minis_list.\""+check+"\" is not NULL"
+        cur.execute(command)
+        for x in range(count):
+                ab_tocheck = cur.fetchone()[0].split(";")
+                abilities += ab_tocheck
+        abilities = list(dict.fromkeys(abilities)) #removes duplicates from the list
+        abilities.sort() #sorts the list alphabetically
+        for x in abilities:
+            print (x)
+
 
     def popout(self):  # makes a popup window with the current settlement and the full description.
         width = 800
@@ -250,4 +322,3 @@ class Main(Tk):
 if __name__ == "__main__":
     app = Main()
     mainloop()
-    print ("poop")
