@@ -57,8 +57,6 @@ class Main(Tk):
             self.setname.append(x[1])
         self.packtypes=["Standard Pack","Commons Only","Non Unique Only"]
 
-        """eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"""
-
         menubar = Menu(self)
         setlist_menu = Menu(menubar)
         pack_menu = Menu(menubar)
@@ -68,12 +66,16 @@ class Main(Tk):
         sm_list = []  # a list of submenus ***MAY BE AN OBSOLETE AND UNNEEDED VARIABLE***
         setmenu_VarList = []  # a list containing lists of variables for checkbox states
         packmenu_VarList = []
-
+        multipleopen = IntVar()
 
         menubar.add_cascade(label="Sets", underline=0, menu=setlist_menu)
         menubar.add_cascade(label="Pack Type", underline=0, menu=pack_menu)
-        #menubar.insert()
-        menubar.add_command(label="Go", underline=0, command=lambda: showcurrent())
+        menubar.add_checkbutton(label="Additional Boxes",variable=multipleopen)
+        menubar.add_command(label="Go", underline=0, command=lambda: generate(self.conn))
+        menubar.add_separator()
+        menubar.add_command(label="DB Browser",command=lambda : self.popout(self.conn))
+        menubar.add_command(label="AB", command=lambda: self.abilitychecker(self.conn, "special abilities"))
+        menubar.add_command(label="FC", command=lambda: self.abilitychecker(self.conn, "force powers"))
 
         for _ in enumerate(self.setname): setmenu_VarList.append(IntVar(self))
         for i in setmenu_VarList:i.set(1)
@@ -108,12 +110,6 @@ class Main(Tk):
         qty_packs = Entry(controlFrame, width=5)
         qty_packs.grid(column=5, row=0)
         qty_packs.insert(END, '1')
-        go = Button(controlFrame, text="Go", command=lambda: generate(self.conn))
-        go.grid(column=6, row=0)
-        ab = Button(controlFrame, text="AB", command=lambda: self.abilitychecker(self.conn,"special abilities"))
-        ab.grid(column=7, row=0)
-        fc = Button(controlFrame, text="FC", command=lambda: self.abilitychecker(self.conn,"force powers"))
-        fc.grid(column=8, row=0)
 
         width = 350
         height = 350
@@ -157,7 +153,7 @@ class Main(Tk):
 
                 minilist = []
                 selected_set = random.choice(setsenabled)
-                selected_set = "Rebel Storm"
+                #selected_set = "Rebel Storm"
                 for x in self.SETS:
                     if x[1] == selected_set: short = x[0] #a crude way to set the short form of your selected set
                 print(selected_set,short)
@@ -261,39 +257,81 @@ class Main(Tk):
             print (x)
 
 
-    def popout(self):  # makes a popup window with the current settlement and the full description.
-        width = 800
+    def popout(self,conn):  # makes a popup window with the current settlement and the full description.
+
+        width = 1200
         height = 600
-        # self.image = self.trim(self.image)
+        iheight = height - 100
+        iwidth = width - 100
+
         popup = Toplevel()
-        popup.title("Popup")
-        popup.geometry("800x600")
-        iheight = 500
-        iwidth = 700
+        popup.title("DB Browser")
+        popup.geometry("1300x600")
         popupbar = Menu(popup)
-        popupbar.add_cascade(label="Save", command=lambda: self.save(True))
-        popupbar.add_cascade(label="Print", command=lambda: [self.save(False), self.make_print()])
+        popupbar.add_cascade(label="Refresh Filters", command=lambda: refreshfilters())
         popupbar.add_cascade(label="Close", command=popup.destroy)
         popup.config(menu=popupbar)
-        topframe = Frame(popup, width=width, height=iheight)
-        topframe.pack(side=TOP)
-        bottomframe = Frame(popup, width=width)
-        bottomframe.pack(side=BOTTOM)
-        leftframe = Frame(topframe, bd=1, width=iwidth, bg="black")
-        leftframe.pack(side=LEFT)
-        rightframe = Frame(topframe, width=width - iwidth, height=iheight)  # ,bg="black",bd=1)
-        rightframe.pack(side=RIGHT)
 
-        TextArea = Text(rightframe, height=20, width=60)
-        TextArea.insert(END, "Words")
-        TextArea.pack(expand=YES, fill=BOTH)
-        TextArea.config(font="arial", wrap=WORD)  # ('Arial', 10, 'bold', 'italic'))
+        topframe = Frame(popup, width=iwidth)
+        topframe.grid(row=0,column=0)
+        bottomframe = Frame(popup, width=width,height=iheight)
+        bottomframe.grid(row=1,column=0)
 
-        TextArea2 = Text(bottomframe, height=20, width=int(width / 9))
-        TextArea2.insert(END, "More words")
-        TextArea2.pack(expand=YES, fill=BOTH)
-        TextArea2.config(font="arial", wrap=WORD)
+        colheadVar =[]
+        datarows = []
+        columnnames = ["uniq_id", "name", "set", "id", "faction", "rarity", "cost", "size", "hit points", "defense", "attack",
+                       "damage", "special abilities", "force points", "force powers"]
+        for x in range (len(columnnames)):
+            colheadVar.append(StringVar(self))
 
+
+        columnwidth=[1,20,12,3,10,4,3,5,3,3,3,3,20,3,20]
+        tableheight = 50
+        tablewidth = len(columnnames)
+        for j in range (tablewidth):
+            Label(bottomframe,text=columnnames[j]).grid(row=0,column=j)
+            Entry(bottomframe,text="filter entry",width=columnwidth[j],textvariable=colheadVar[j]).grid(row=1, column=j)
+
+        def refreshfilters():
+            for x in datarows: x.destroy()
+            datarows.clear()
+            print ("am I clean now? ",datarows)
+
+            statements =[False] * 16
+            statements[0] = "SELECT * FROM minis_list "
+            first = False
+            for x,i in enumerate(colheadVar,1):
+                val=i.get()
+                mod=""
+                mod2=""
+                if val:
+                    if not first:
+                        first=True
+                        if ">" in val or "<" in val: statements[x] = "WHERE \"" + columnnames[x-1] + "\" "+ val
+                        else: statements[x] = "WHERE \"" + columnnames[x-1] + "\" LIKE \"%" + val + "%\""
+                    else :
+                        if ">" in val or "<" in val: statements[x] = " AND \"" + columnnames[x-1] + "\" "+ val
+                        else: statements[x]=" AND \""+columnnames[x-1]+"\" LIKE \"%"+val+"%\""
+
+            command =""
+            for x in statements:
+                if x: command += str(x)
+            print(command)
+            cur = conn.cursor()
+            cur.execute(command)
+            table = cur.fetchall()
+            print (table)
+            tablelength=len(table)
+            #for x in table: print (x)
+            if not first:tablelength=50
+            print(tablelength,"results found")
+            for i in range(tablelength):  # Rows
+                for j in range(tablewidth):  # Columns
+                    tmp = Label(bottomframe, text=table[i][j])
+                    tmp.grid(row=i + 2, column=j)
+                    datarows.append(tmp)
+
+        refreshfilters()
         popup.mainloop()
 
     def rowcounts(self, conn):
