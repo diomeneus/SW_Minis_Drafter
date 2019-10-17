@@ -65,8 +65,9 @@ class Main(Tk):
 
         sm_list = []  # a list of submenus ***MAY BE AN OBSOLETE AND UNNEEDED VARIABLE***
         setmenu_VarList = []  # a list containing lists of variables for checkbox states
-        packmenu_VarList = []
+        #packmenu_VarList = []
         multipleopen = IntVar()
+        packtype = StringVar(self)
 
         menubar.add_cascade(label="Sets", underline=0, menu=setlist_menu)
         menubar.add_cascade(label="Pack Type", underline=0, menu=pack_menu)
@@ -87,26 +88,19 @@ class Main(Tk):
             setlist_menu.add_checkbutton(label=i, variable=setmenu_VarList[index], onvalue=1, offvalue=0,
                                 command=lambda: refreshState())
 
-        for _ in enumerate(self.packtypes): packmenu_VarList.append(IntVar(self))
+        #for _ in enumerate(self.packtypes): packmenu_VarList.append(IntVar(self))
         #for i in setmenu_VarList:i.set(1)
         for index,i in enumerate(self.packtypes):
-            pack_menu.add_radiobutton(label=i,variable=packmenu_VarList[index], value=1)
+            pack_menu.add_radiobutton(label=i,variable=packtype, value=index)
+        packtype.set(0)
 
-
-
-        var_rarity = StringVar(self)
-        var_rarity.set("Standard Pack")  # default value
         var_faction = StringVar(self)
         var_faction.set("Any")  # default value
 
         #OptionMenu(controlFrame, var_set, *self.setname).grid(column=0, row=0)
 
-        OptionMenu(controlFrame, var_rarity, *self.RARITY).grid(column=1, row=0)
         OptionMenu(controlFrame, var_faction, *self.FACTIONS).grid(column=2, row=0)
 
-        packtype = StringVar(self)
-        packtype.set("Packs")
-        Label (controlFrame,textvariable=packtype).grid(column=4, row=0)
         qty_packs = Entry(controlFrame, width=5)
         qty_packs.grid(column=5, row=0)
         qty_packs.insert(END, '1')
@@ -157,9 +151,8 @@ class Main(Tk):
                 for x in self.SETS:
                     if x[1] == selected_set: short = x[0] #a crude way to set the short form of your selected set
                 print(selected_set,short)
-
-                if var_rarity.get() == "Standard Pack":
-
+                if packtype.get() == str(0): #0 is standard pack
+                    print ("success")
                     cur.execute(
                         "SELECT \"id\", \"set\", \"name\" FROM minis_list WHERE \"SET\" = \""+selected_set+"\" AND \"rarity\" = \"common\"")
                     commons= cur.fetchall()
