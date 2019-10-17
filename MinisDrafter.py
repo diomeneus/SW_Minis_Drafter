@@ -66,12 +66,15 @@ class Main(Tk):
         sm_list = []  # a list of submenus ***MAY BE AN OBSOLETE AND UNNEEDED VARIABLE***
         setmenu_VarList = []  # a list containing lists of variables for checkbox states
         #packmenu_VarList = []
-        multipleopen = IntVar()
+        #multipleopen = IntVar()
         packtype = StringVar(self)
+        qty_packs = IntVar()
+        qty_packs.set(1)
 
         menubar.add_cascade(label="Sets", underline=0, menu=setlist_menu)
         menubar.add_cascade(label="Pack Type", underline=0, menu=pack_menu)
-        menubar.add_checkbutton(label="Additional Boxes",variable=multipleopen)
+        menubar.add_command(label="Additional Boxes"), #command=lambda : DoSomethingWithInput(a.get))
+        menubar.add_command(label="1")
         menubar.add_command(label="Go", underline=0, command=lambda: generate(self.conn))
         menubar.add_separator()
         menubar.add_command(label="DB Browser",command=lambda : self.popout(self.conn))
@@ -94,21 +97,18 @@ class Main(Tk):
             pack_menu.add_radiobutton(label=i,variable=packtype, value=index)
         packtype.set(0)
 
-        var_faction = StringVar(self)
-        var_faction.set("Any")  # default value
+        #var_faction = StringVar(self)
+        #var_faction.set("Any")  # default value
 
         #OptionMenu(controlFrame, var_set, *self.setname).grid(column=0, row=0)
 
-        OptionMenu(controlFrame, var_faction, *self.FACTIONS).grid(column=2, row=0)
+        #OptionMenu(controlFrame, var_faction, *self.FACTIONS).grid(column=2, row=0)
 
-        qty_packs = Entry(controlFrame, width=5)
-        qty_packs.grid(column=5, row=0)
-        qty_packs.insert(END, '1')
+
 
         width = 350
         height = 350
 
-        qty_packs.focus_set()
 
 
 
