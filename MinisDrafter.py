@@ -1,6 +1,8 @@
 from tkinter import *
 from tkinter.filedialog import askopenfilename
 from tkinter import filedialog
+from tkinter import simpledialog
+
 #from PIL import Image,ImageTk,ImageDraw
 from PIL import Image, ImageDraw, ImageTk, ImageFont,ImageChops
 from math import cos, sin, sqrt, radians, floor
@@ -15,7 +17,6 @@ import sqlite3
 from sqlite3 import Error
 
 from fpdf import FPDF
-# class Controls_GearGen(Frame):
 
 
 class Main(Tk):
@@ -48,33 +49,28 @@ class Main(Tk):
                      ["rs", "Rebel Storm"],
                      ["tdt", "Dark Times"],
                      ["uh", "Universe"]]
-        self.RARITY = ["Common", "Uncommon", "Rare", "Very Rare"]
+        #self.RARITY = ["Common", "Uncommon", "Rare", "Very Rare"]
         self.FACTIONS = ["Rebel", "Imperial", "The Old Republic", "The New Republic", "Sith", "Republic", "Seperatist",
                          "Yuuzhan Vong", "Mandolorian", "Fringe"]
 
         self.setname = []
         for x in (self.SETS):
             self.setname.append(x[1])
-        self.packtypes=["Standard Pack","Commons Only","Non Unique Only"]
+        self.packtypes=["Standard Pack","Commons","Uncommons","Rares","Very Rares","Uniques","Non-Unique",]
 
         menubar = Menu(self)
         setlist_menu = Menu(menubar)
         pack_menu = Menu(menubar)
-
         self.config(menu=menubar)
 
-        sm_list = []  # a list of submenus ***MAY BE AN OBSOLETE AND UNNEEDED VARIABLE***
         setmenu_VarList = []  # a list containing lists of variables for checkbox states
-        #packmenu_VarList = []
-        #multipleopen = IntVar()
         packtype = StringVar(self)
-        qty_packs = IntVar()
-        qty_packs.set(1)
 
         menubar.add_cascade(label="Sets", underline=0, menu=setlist_menu)
         menubar.add_cascade(label="Pack Type", underline=0, menu=pack_menu)
-        menubar.add_command(label="Additional Boxes"), #command=lambda : DoSomethingWithInput(a.get))
+        menubar.add_command(label="Change Box Count",command=lambda: getbox()), #command=lambda : DoSomethingWithInput(a.get))
         menubar.add_command(label="1")
+        self.qty_packs = 1
         menubar.add_command(label="Go", underline=0, command=lambda: generate(self.conn))
         menubar.add_separator()
         menubar.add_command(label="DB Browser",command=lambda : self.popout(self.conn))
@@ -88,44 +84,26 @@ class Main(Tk):
         setlist_menu.add_command(label="None", command=lambda: modAll(setmenu_VarList, 0))
         setlist_menu.add_separator()
         for index, i in enumerate(self.setname):
-            setlist_menu.add_checkbutton(label=i, variable=setmenu_VarList[index], onvalue=1, offvalue=0,
-                                command=lambda: refreshState())
+            setlist_menu.add_checkbutton(label=i, variable=setmenu_VarList[index], onvalue=1, offvalue=0)
 
-        #for _ in enumerate(self.packtypes): packmenu_VarList.append(IntVar(self))
-        #for i in setmenu_VarList:i.set(1)
         for index,i in enumerate(self.packtypes):
             pack_menu.add_radiobutton(label=i,variable=packtype, value=index)
         packtype.set(0)
 
-        #var_faction = StringVar(self)
-        #var_faction.set("Any")  # default value
-
-        #OptionMenu(controlFrame, var_set, *self.setname).grid(column=0, row=0)
-
-        #OptionMenu(controlFrame, var_faction, *self.FACTIONS).grid(column=2, row=0)
-
-
-
-        width = 350
-        height = 350
-
-
-
-
         database = "./DB/SWminis.db"
         self.conn = self.create_connection(database)
-        self.rowcounts(self.conn)  # counts the max rowlength for each table.
+
+        def getbox():
+            answer = simpledialog.askinteger("Input", "Open 1-20 boxes",
+                                             parent=self,
+                                             minvalue=1, maxvalue=20)
+            if answer == None: answer = 1
+            menubar.entryconfig(4,label=str(answer))
+            self.qty_packs = answer
 
         def modAll(var, state):
             for index, i in enumerate(var):
                 var[index].set(state)
-
-        def open_player():
-            self.file_path = filedialog.askopenfilename()
-
-        def save_player():
-            # should only invoke the dialog for path and name 1st time.
-            if not self.file_path: self.file_path = filedialog.askopenfilename()
 
         def generate(conn):
             cur = conn.cursor()
@@ -139,20 +117,15 @@ class Main(Tk):
                 if i.get() == 1:
                     setsenabled.append(self.setname[x])
 
-
-            print (setsenabled)
-            for p in range(1,int(qty_packs.get())+1):
-                print ("opening pack",p)
+            for p in range(1,self.qty_packs+1):
+                print ("opening pack",p,"of",self.qty_packs)
                 pdf.add_page()
 
                 minilist = []
                 selected_set = random.choice(setsenabled)
-                #selected_set = "Rebel Storm"
                 for x in self.SETS:
                     if x[1] == selected_set: short = x[0] #a crude way to set the short form of your selected set
-                print(selected_set,short)
                 if packtype.get() == str(0): #0 is standard pack
-                    print ("success")
                     cur.execute(
                         "SELECT \"id\", \"set\", \"name\" FROM minis_list WHERE \"SET\" = \""+selected_set+"\" AND \"rarity\" = \"common\"")
                     commons= cur.fetchall()
@@ -174,27 +147,30 @@ class Main(Tk):
                         minilist.append(mini)
                     minilist.append(random.choice(rares))
 
-
                     #CREATES THE CARDS AND RENDERS THEM ON SCREEN
                     rw=0
                     for x,i in enumerate(minilist):
                         card = ("./cards/"+short+"{:02d}".format(i[0])+".jpg")
                         im = Image.open(card)
                         width, height = im.size
+                        sizesm = int(width / 6) , int(height / 3)
+                        print (sizesm)
                         imback = im.crop((width/2, 0, width, height))
 
-                        #imback = imback.resize((int(width / 6), int(height / 3)))
+                        imbacksm = imback.resize(sizesm, resample=Image.ANTIALIAS)
                         imfront = im.crop((0, 0, width/2, height))
                         cardlist.append(imback)
 
                         imback.save(str(p)+"_"+str(x)+"temp.png")
+                        imbacksm.save(str(p)+"_"+str(x)+"temp_sm.png")
                         load = Image.open(str(p)+"_"+str(x)+"temp.png")
+                        load_sm = Image.open(str(p)+"_"+str(x)+"temp_sm.png")
                         render = ImageTk.PhotoImage(load)
-                        #render_sm = render.subsample(2,2)
-                        img = Label(self, image=render,width=int(width / 6),height=int(height / 3))
-                        img.image = render
-                        col = x % 3
-                        if (x % 3 == 0): rw +=1
+                        render_sm = ImageTk.PhotoImage(load_sm)
+                        img = Label(self, image=render_sm,width=int(width / 6),height=int(height / 3))
+                        img.image = render_sm
+                        col = x % 4
+                        if (x % 4 == 0): rw +=1
                         img.grid(row=rw,column=col)
 
                     #READS THE TEMPORARY PNGS CREATED AND PUTS THEM ON A PDF PAGE
@@ -205,12 +181,14 @@ class Main(Tk):
                     pdf.text(x=10, y=5, txt="Pack "+str(p)+" - "+str(selected_set))
                     pdf.rect(x=73, y=191, w=width, h=height)
                     pdf.rect(x=138,y=191, w=width, h=height)
+                    offset=0
                     for x,i in enumerate(minilist):
                         col = x % 3
                         if (x % 3 == 0): rw += 1
                         pdf.image(str(p)+"_"+str(x)+"temp.png",x=col*size+8,y=rw*size*1.39-80,w=width,h=height)  # , x=10, y=8, w=100)
                         print (i)
-                        pdf.text(x=143, y=201+x*4, txt=str(i[2])+"  ["+str(i[0])+"]")
+                        if x == 4 or x ==6:offset +=4
+                        pdf.text(x=143, y=201+x*4+offset, txt=str(i[2])+"  ["+str(i[0])+"]")
 
 
 
@@ -218,9 +196,8 @@ class Main(Tk):
             time = (str(time)[-6:])
             pdf.output("./packs/packname"+time+".pdf")
 
-
-
-
+    def click(self,evt):
+        print (evt.x)
 
     def create_connection(self, db_file):
         try:
@@ -230,6 +207,7 @@ class Main(Tk):
             print(e)
         return None
 
+    #once DB is validated this is pointless... but could be good to parse out all abilities
     def abilitychecker(self,conn,check):
         abilities =[]
         cur = conn.cursor()
@@ -251,12 +229,8 @@ class Main(Tk):
 
 
     def popout(self,conn):  # makes a popup window with the current settlement and the full description.
-
         width = 1200
         height = 600
-        iheight = height - 100
-        iwidth = width - 100
-
         popup = Toplevel()
         popup.title("DB Browser")
         popup.geometry("1300x600")
@@ -265,9 +239,9 @@ class Main(Tk):
         popupbar.add_cascade(label="Close", command=popup.destroy)
         popup.config(menu=popupbar)
 
-        topframe = Frame(popup, width=iwidth)
+        topframe = Frame(popup, width=width)
         topframe.grid(row=0,column=0)
-        bottomframe = Frame(popup, width=width,height=iheight)
+        bottomframe = Frame(popup, width=width,height=height)
         bottomframe.grid(row=1,column=0)
 
         colheadVar =[]
@@ -276,7 +250,6 @@ class Main(Tk):
                        "damage", "special abilities", "force points", "force powers"]
         for x in range (len(columnnames)):
             colheadVar.append(StringVar(self))
-
 
         columnwidth=[1,20,12,3,10,4,3,5,3,3,3,3,20,3,20]
         tableheight = 50
@@ -288,7 +261,6 @@ class Main(Tk):
         def refreshfilters():
             for x in datarows: x.destroy()
             datarows.clear()
-            print ("am I clean now? ",datarows)
 
             statements =[False] * 16
             statements[0] = "SELECT * FROM minis_list "
@@ -313,9 +285,7 @@ class Main(Tk):
             cur = conn.cursor()
             cur.execute(command)
             table = cur.fetchall()
-            print (table)
             tablelength=len(table)
-            #for x in table: print (x)
             if not first:tablelength=50
             print(tablelength,"results found")
             for i in range(tablelength):  # Rows
@@ -327,29 +297,21 @@ class Main(Tk):
         refreshfilters()
         popup.mainloop()
 
-    def rowcounts(self, conn):
-        self.count=[0]
-        cur = conn.cursor()
+    # def rowcounts(self, conn):
+    #     self.count=[0]
+    #     cur = conn.cursor()
+    #
+    #     n = 0
+    #     for x in (["Rebel Storm"]):#self.SETS):
+    #         #print (x)
+    #         command = "SELECT COUNT() FROM minis_list WHERE \"SET\" = \"" + x+"\""
+    #         print (command)
+    #         cur.execute(command)
+    #         (self.count[n],) = cur.fetchone()
+    #         n += 1
+    #     n = 0
+    #     print (self.count)
 
-        n = 0
-        for x in (["Rebel Storm"]):#self.SETS):
-            #print (x)
-            command = "SELECT COUNT() FROM minis_list WHERE \"SET\" = \"" + x+"\""
-            print (command)
-            cur.execute(command)
-            (self.count[n],) = cur.fetchone()
-            n += 1
-        n = 0
-        print (self.count)
-
-    #pretty confident this is too basic and also not used currently.
-    def valuenames(self, conn, table, column, value):
-       cur = conn.cursor()
-       statement = ("SELECT * FROM " + table + " WHERE " + column + " = " + value)
-       cur.execute(statement)
-       return cur.fetchone()
-
-# As far as I can tell this is a pythony secure way to launch the main loop.
 if __name__ == "__main__":
     app = Main()
     mainloop()
