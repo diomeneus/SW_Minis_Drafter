@@ -161,10 +161,10 @@ class Main(Tk):
                         imfront = im.crop((0, 0, width/2, height))
                         cardlist.append(imback)
 
-                        imback.save(str(p)+"_"+str(x)+"temp.png")
-                        imbacksm.save(str(p)+"_"+str(x)+"temp_sm.png")
-                        load = Image.open(str(p)+"_"+str(x)+"temp.png")
-                        load_sm = Image.open(str(p)+"_"+str(x)+"temp_sm.png")
+                        imback.save("tmp\\"+str(p)+"_"+str(x)+"temp.png")
+                        imbacksm.save("tmp\\"+str(p)+"_"+str(x)+"temp_sm.png")
+                        load = Image.open("tmp\\"+str(p)+"_"+str(x)+"temp.png")
+                        load_sm = Image.open("tmp\\"+str(p)+"_"+str(x)+"temp_sm.png")
                         render = ImageTk.PhotoImage(load)
                         render_sm = ImageTk.PhotoImage(load_sm)
                         img = Label(self, image=render_sm,width=int(width / 6),height=int(height / 3))
@@ -185,7 +185,7 @@ class Main(Tk):
                     for x,i in enumerate(minilist):
                         col = x % 3
                         if (x % 3 == 0): rw += 1
-                        pdf.image(str(p)+"_"+str(x)+"temp.png",x=col*size+8,y=rw*size*1.39-80,w=width,h=height)  # , x=10, y=8, w=100)
+                        pdf.image("tmp\\"+str(p)+"_"+str(x)+"temp.png",x=col*size+8,y=rw*size*1.39-80,w=width,h=height)  # , x=10, y=8, w=100)
                         print (i)
                         if x == 4 or x ==6:offset +=4
                         pdf.text(x=143, y=201+x*4+offset, txt=str(i[2])+"  ["+str(i[0])+"]")
@@ -296,21 +296,6 @@ class Main(Tk):
 
         refreshfilters()
         popup.mainloop()
-
-    # def rowcounts(self, conn):
-    #     self.count=[0]
-    #     cur = conn.cursor()
-    #
-    #     n = 0
-    #     for x in (["Rebel Storm"]):#self.SETS):
-    #         #print (x)
-    #         command = "SELECT COUNT() FROM minis_list WHERE \"SET\" = \"" + x+"\""
-    #         print (command)
-    #         cur.execute(command)
-    #         (self.count[n],) = cur.fetchone()
-    #         n += 1
-    #     n = 0
-    #     print (self.count)
 
 if __name__ == "__main__":
     app = Main()
