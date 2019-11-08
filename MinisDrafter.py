@@ -51,7 +51,7 @@ class PackFrame(Frame):
         setsenabled = []
         for x, i in enumerate(setmenu_VarList):
             if i.get() == 1:
-                setsenabled.append(self.setname[x])
+                setsenabled.append(self.SETS[0][x])
 
         for p in range(1, qty_packs + 1):
             print("opening pack", p, "of", qty_packs)
@@ -59,8 +59,7 @@ class PackFrame(Frame):
 
             minilist = []
             selected_set = random.choice(setsenabled)
-            for x in self.SETS:
-                if x[1] == selected_set: short = x[0]  # a crude way to set the short form of your selected set
+            short = self.SETS[1][self.SETS[0].index(selected_set)]
             if packtype.get() == str(0):  # 0 is standard pack
                 cur.execute(
                     "SELECT \"id\", \"set\", \"name\" FROM minis_list WHERE \"SET\" = \"" + selected_set + "\" AND \"rarity\" = \"common\"")
@@ -150,7 +149,7 @@ class DbFrame(Frame):
                    "damage", "special abilities", "force points", "force powers", "count"]
         for x, i in enumerate(controller.headers):
              controller.colheadVar.append(StringVar(self))
-             print (x,i)
+             #print (x,i)
              Label (topframe,text=i,width=len(i)).grid(row=0, column=x)
              Entry (topframe,width=len(i),textvariable=controller.colheadVar[x]).grid(row=1, column=x)
         controller.lb1 = Listbox(bottomframe,width=200,height=100)#,selectmode=EXTENDED)
@@ -201,7 +200,7 @@ class DbFrame(Frame):
         table = cur.fetchall()
         for x,i in enumerate(table):  # Rows
             temp = i[1:]
-            self.lb1.insert(x,i[1:])
+            self.lb1.insert(x,i)
 
 class Main(Tk):
     def __init__(self):
@@ -233,30 +232,12 @@ class Main(Tk):
         self.db_menubar.add_command(label="Pack Generator", command=lambda: self.show_frame("PackFrame"))
         self.db_menubar.add_cascade(label="Close", command=lambda: self.safeclose())
 
-        """----------------------------------------------------------------------------------------------------------"""
-        self.SETS = [["ae", "Alliance and Empire"],
-                     ["bh", "Booty Hunters"],
-                     ["ae", "Alliance and Penis"],
-                     ["cotf", "Champions of the Force"],
-                     ["cs", "Clone Strike"],
-                     ["cw", "The Clone Porn"],
-                     ["fu", "The Force Unleashed"],
-                     ["gaw", "Galaxy at War"],
-                     ["ie", "Imperial Entanglements"],
-                     ["ja", "Jedi Academy"],
-                     ["kotor", "Knights of the Old Republic"],
-                     ["lotf", "Legacy of the Farts"],
-                     ["motf", "Masters of the Force"],
-                     ["rots", "Revenge of the Sluts"],
-                     ["rs", "Rebel Storm"],
-                     ["tdt", "High Times"],
-                     ["uh", "Universe"]]
+        self.SETS = ["Alliance and Empire", "Bounty Hunters", "Alliance and Empire", "Champions of the Force", "Clone Strike", "The Clone Wars",
+                     "The Force Unleashed", "Galaxy at War", "Imperial Entanglements", "Jedi Academy", "Knights of the Old Republic", "Legacy of the Force",
+                     "Masters of the Force", "Revenge of the Sith", "Rebel Storm", "Dark Times", "Universe"],["ae","bh","ae","cotf","cs","cw","fu","gaw","ie","ja","kotor","lotf","motf","rots","rs","tdt","uh",]
         self.FACTIONS = ["Rebel", "Imperial", "The Old Republic", "The New Republic", "Sith", "Republic", "Seperatist",
                          "Yuuzhan Vong", "Mandolorian", "Fringe"]
 
-        self.setname = []
-        for x in (self.SETS):
-            self.setname.append(x[1])
         self.packtypes = ["Standard Pack", "Commons", "Uncommons", "Rares", "Very Rares", "Uniques", "Non-Unique"]
         self.pack_menubar = Menu(self)
         setlist_menu = Menu(self.pack_menubar)
@@ -278,13 +259,13 @@ class Main(Tk):
 
         self.pack_menubar.add_command(label="quit", command=lambda: self.safeclose())
 
-        for _ in enumerate(self.setname): setmenu_VarList.append(IntVar(self))
+        for _ in enumerate(self.SETS[0]): setmenu_VarList.append(IntVar(self))
         for i in setmenu_VarList: i.set(1)
 
         setlist_menu.add_command(label="All", command=lambda: modAll(setmenu_VarList, 1))
         setlist_menu.add_command(label="None", command=lambda: modAll(setmenu_VarList, 0))
         setlist_menu.add_separator()
-        for index, i in enumerate(self.setname):
+        for index, i in enumerate(self.SETS[0]):
             setlist_menu.add_checkbutton(label=i, variable=setmenu_VarList[index], onvalue=1, offvalue=0)
 
         for index, i in enumerate(self.packtypes):
@@ -333,17 +314,70 @@ class Main(Tk):
         for x in abilities:
             print (x)
 
+    def exportlb(self,lb):
+        list = lb
+        cost = 0
+        cardlist=[]
+        minilist=[]
+        for x in range(list.size()):
+            minilist.append(list.get(x).split("_")[0])
+            cardlist.append(list.get(x).split("_")[1])
+            cost += int(list.get(x).split("_")[2])
+
+        filename = filedialog.asksaveasfile(initialdir="./custom",title='Name your cardlist',defaultextension = str(cost)+'.pdf')
+        if filename is None:  # asksaveasfile return `None` if dialog closed with "cancel".
+            return
+
+        pdf = FPDF()
+        pdf.set_font('Arial', 'B', 10)
+
+        """get the length of overall minis to print... then structure for loops around that."""
+        #saves the temp files
+        print(cardlist)
+        pagecount = len(cardlist) // 8 + 1
+        page=0
+        size = 65
+        width = 64
+        height = width * 1.39
+        for x, i in enumerate(cardlist):
+            card = ("./cards/" + str(i) + ".jpg")
+            im = Image.open(card)
+            imgwidth, imgheight = im.size
+            imback = im.crop((imgwidth / 2, 0, imgwidth, imgheight))
+            imback.save("tmp\\" + str(x) + "temp.png")
+            if (x // 8+1) > page:
+                page+=1
+                pdf.add_page()
+                row=0
+                pdf.text(x=10, y=5, txt="Filename")
+                pdf.rect(x=138, y=191, w=width, h=height)
+            row = x // 3
+            col = x % 3
+            #print ("page:",page,"card",x+1," - Put it in row/col",row,col)
+            pdf.image("tmp\\" + str(x) + "temp.png", x=col * size + 8, y=row * size * 1.39+10, w=width, h=height)  # , x=10, y=8, w=100)
+            pdf.text(x=143, y=201 + x * 4, txt=str(i[2]) + "  [" + str(minilist[x]) + "]")
+        print (filename.name)
+        pdf.output(filename.name)
+
+
     def popup(self):
         popupWindow = Toplevel(self)
         popupWindow.attributes('-topmost', 'true')
-        popupWindow.geometry("300x100")
-        self.lb2 = Listbox(popupWindow, width=50, height=50, selectmode=EXTENDED)
+        popupWindow.geometry("400x200")
+        self.lb2 = Listbox(popupWindow, width=50, height=10)
         self.lb2.grid(row=0, column=0)
+        popcost = StringVar()
+        popcount = StringVar()
+        Label (popupWindow,text="Total Cost:",textvariable=popcost).grid(row=1,column=0)
+        Button(popupWindow, text="export", command=lambda : Main.exportlb(self,self.lb2)).grid(row=1,column=1)
+
 
     def sendcharacter(self,char):
-        self.lb2.insert(0,str(char[0])+" - "+str(char[5]))
+        setshort=self.SETS[1][self.SETS[0].index(char[2])]+str("{:02d}".format(char[3])) #references the setlist for the shortname of the set the mini is from and rounds the id to two digits.
+        self.lb2.insert(0,str(char[1])+"_"+str(setshort)+"_"+str(char[6]))
         self.lb2.bind('<Double-1>', lambda x: self.lb2.delete(self.lb2.index(self.lb2.curselection())))
-        print (char)
+        #popcount.set 
+
 
 if __name__ == "__main__":
     app = Main()
