@@ -148,23 +148,36 @@ class DbFrame(Frame):
         bottomframe.grid(row=2,column=0)
 
         controller.colheadVar = []
-        controller.headers = ["name", "set", "id", "faction", "rarity", "cost", "size", "hit points", "defense", "attack",
-                   "damage", "special abilities", "force points", "force powers", "count"]
+        controller.headers = ["name", "set", "id", "faction", "rarity", "pts", "size", "hp", "df", "at",
+                              "dm", "special abilities", "FP", "force powers", "cnt"]
+        +3
+        columnwidth =        [49,      31,    4,   19,         14,       4,      9,     3,    3,    3,
+                              3,      36,                  3,         38,           5]
+        var_set = StringVar()
         for x, i in enumerate(controller.headers):
              controller.colheadVar.append(StringVar(self))
              #print (x,i)
-             Label (topframe,text=i,width=len(i)).grid(row=0, column=x)
-             Entry (topframe,width=len(i),textvariable=controller.colheadVar[x]).grid(row=1, column=x)
+             Label (topframe,text=i,width=len(i),font=monofont).grid(sticky="W",row=0, column=x)
+             if i == "set":
+                 w = OptionMenu(topframe, var_set,"Alliance and Empire", "Bounty Hunters", "Alliance and Empire", "Champions of the Force", "Clone Strike", "The Clone Wars",
+                     "The Force Unleashed", "Galaxy at War", "Imperial Entanglements", "Jedi Academy", "Knights of the Old Republic", "Legacy of the Force",
+                     "Masters of the Force", "Revenge of the Sith", "Rebel Storm", "Dark Times", "Universe")
+                 w.config(width= columnwidth[x])
+                 w.grid(sticky="W",row=1, column=x)
+             # elif i == "faction":
+             #     self.filter_set.grid(sticky="W",row=1, column=x)
+             # elif i == "rarity":
+             #     self.filter_set.grid(sticky="W",row=1, column=x)
+             # elif i == "size":
+             #     self.filter_set.grid(sticky="W",row=1, column=x)
+             else: Entry (topframe,width=columnwidth[x],textvariable=controller.colheadVar[x]).grid(sticky="W",row=1, column=x)
+            #make drop downs for set,faction,rarity,size ... maybe abilities/force
         controller.lb1 = Listbox(bottomframe,width=200,height=100)#,font=monofont)
         controller.lb1.configure(font=monofont)
         controller.lb1.grid(row=0,column=0)
         controller.lb1.bind('<Double-1>', lambda x: controller.sendcharacter(controller.lb1.get(controller.lb1.index(controller.lb1.curselection()))))
         datarows = []
-        #columnwidth=[20,12,3,10,4,3,5,3,3,3,3,20,3,20]
-        #tableheight = 50
-        #tablewidth = len(columnnames)
-
-
+        columnwidth=[20,12,3,10,4,3,5,3,3,3,3,20,3,20]
 
         def loadplayer():
             filename = filedialog.askopenfilename(initialdir = "./players")
@@ -184,6 +197,8 @@ class DbFrame(Frame):
         statements[0] = "SELECT * FROM minis_list "
         #if setfilter: statements[0]+
         first = False
+        
+        
         for x,i in enumerate(self.colheadVar,1):
             val=i.get()
             filtered=""
@@ -204,8 +219,8 @@ class DbFrame(Frame):
         table = cur.fetchall()
         for x,i in enumerate(table):  # Rows
             temp = i[1:]
-            print (i)
-            self.lb1.insert(x, "{0:3d} {1:39}{2:23} {3:2d} {4:17}{5:10}{6:5d} {7:7}{8:3d}{9:3d}{10:3d}{11:3d}  {12:40}{13:5d}{14:40}".format(
+            #print (i)
+            self.lb1.insert(x, "{0:3d} {1:39}{2:27} {3:2d} {4:17}{5:10}{6:5d} {7:7}{8:3d}{9:3d}{10:3d}{11:3d}  {12:40}{13:5d} {14:40}".format(
                                 i[0], str(i[1]), str(i[2]), i[3], str(i[4]), str(i[5]), i[6], str(i[7]), i[8], i[9], i[10], i[11], str(i[12]), i[13], str(i[14])))
 
 class Main(Tk):
@@ -290,7 +305,6 @@ class Main(Tk):
             self.config(menu=self.db_menubar)
 
     def safeclose(self):
-        print("do stuff before closing, like closing open files/db connections?")
         folder = './tmp/'
         for the_file in os.listdir(folder):
             file_path = os.path.join(folder, the_file)
@@ -318,7 +332,6 @@ class Main(Tk):
         command =  "SELECT COUNT() FROM minis_list WHERE minis_list.\""+check+"\" is not NULL"
         cur.execute(command)
         count = cur.fetchone()[0]
-        print (count)
 
         command = "SELECT minis_list.\""+check+"\" FROM minis_list WHERE minis_list.\""+check+"\" is not NULL"
         cur.execute(command)
@@ -350,7 +363,7 @@ class Main(Tk):
 
         """get the length of overall minis to print... then structure for loops around that."""
         #saves the temp files
-        print(cardlist)
+        #print(cardlist)
         pagecount = len(cardlist) // 8 + 1
         page=0
         width = 63
@@ -399,10 +412,15 @@ class Main(Tk):
 
 
     def sendcharacter(self,char):
-        setshort=self.SETS[1][self.SETS[0].index(char[2])]+str("{:02d}".format(char[3])) #references the setlist for the shortname of the set the mini is from and rounds the id to two digits.
-        self.lb2.insert(0,str(char[1])+"_"+str(setshort)+"_"+str(char[6]))
-        self.lb2.bind('<Double-1>', lambda x: self.lb2.delete(self.lb2.index(self.lb2.curselection())))
+        name = char[3:42].rstrip(" ")
+        set = char[43:70].rstrip(" ") #interprets the line sent and takes the set out of it.
+        id = "{:02d}".format(int(char[71:73].strip(" ")))
+        cost = "{:02d}".format(int(char[103:106].strip(" ")))
+        setshort=self.SETS[1][self.SETS[0].index(set)]+id #references the setlist for the shortname of the set the mini is from and rounds the id to two digits.
 
+        #print (name+"_"+setshort+"_"+cost)
+        self.lb2.insert(0,name+"_"+setshort+"_"+cost)
+        self.lb2.bind('<Double-1>', lambda x: self.lb2.delete(self.lb2.index(self.lb2.curselection())))
         self.count = self.lb2.size()
         self.count_label.set("Count: " + str(self.count))
 
@@ -411,7 +429,6 @@ class Main(Tk):
             cost += int(self.lb2.get(x).split("_")[2])
         self.cost_label.set("Points: " + str(cost))
 
-        #popcount.set
 
 
 if __name__ == "__main__":
