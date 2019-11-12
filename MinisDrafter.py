@@ -2,6 +2,7 @@ from tkinter import *
 from tkinter.filedialog import askopenfilename
 from tkinter import filedialog
 from tkinter import simpledialog
+from tkinter import font
 
 from PIL import Image, ImageDraw, ImageTk, ImageFont,ImageChops
 from math import cos, sin, sqrt, radians, floor
@@ -134,11 +135,13 @@ class DbFrame(Frame):
     def __init__(self, parent, controller):
         Frame.__init__(self, parent)
         self.controller = controller
+        #style.configure("Courier.TButton", font=("Courier", 12))
         setfilter = False
         filename=""
         width, height = self.winfo_screenwidth(), self.winfo_screenheight()
         controller.popup()
-
+        monofont = font.Font(family='Courier', size=8)
+        #monofont = 'TkFixedFont'
         topframe = Frame(self, width=width)
         topframe.grid(row=0,column=0)
         bottomframe = Frame(self, width=width,height=height)
@@ -152,7 +155,8 @@ class DbFrame(Frame):
              #print (x,i)
              Label (topframe,text=i,width=len(i)).grid(row=0, column=x)
              Entry (topframe,width=len(i),textvariable=controller.colheadVar[x]).grid(row=1, column=x)
-        controller.lb1 = Listbox(bottomframe,width=200,height=100)#,selectmode=EXTENDED)
+        controller.lb1 = Listbox(bottomframe,width=200,height=100)#,font=monofont)
+        controller.lb1.configure(font=monofont)
         controller.lb1.grid(row=0,column=0)
         controller.lb1.bind('<Double-1>', lambda x: controller.sendcharacter(controller.lb1.get(controller.lb1.index(controller.lb1.curselection()))))
         datarows = []
@@ -172,9 +176,9 @@ class DbFrame(Frame):
             """do something to mod the count column with the file you get"""
             #DbFrame.refreshfilters()
 
-    def refreshfilters(self):#conn,varlist,pack_type,packs_qty):):
-        columnwidth = [20, 12, 3, 10, 4, 3, 5, 3, 3, 3, 3, 20, 3, 20]
-        row_format = "{:<20}  {:>12}  {:<3}  {:10}  {:4}  {:3}  {:5}  {:3}  {:3}  {:3}  {:3}  {:20}  {:3}  {:20}  {:5}"  # left or right align, with an arbitrary '8' column width
+    def refreshfilters(self):
+        #columnwidth = [20, 12, 3, 10, 4, 3, 5, 3, 3, 3, 3, 20, 3, 20, 3]
+        #row_format = "{:<20}  {:>12}  {:<3}  {:10}  {:4}  {:3}  {:5}  {:3}  {:3}  {:3}  {:3}  {:20}  {:3}  {:20}  {:5}"  # left or right align, with an arbitrary '8' column width
         self.lb1.delete(1,1000)
         statements =[False] * 16
         statements[0] = "SELECT * FROM minis_list "
@@ -200,7 +204,9 @@ class DbFrame(Frame):
         table = cur.fetchall()
         for x,i in enumerate(table):  # Rows
             temp = i[1:]
-            self.lb1.insert(x,i)
+            print (i)
+            self.lb1.insert(x, "{0:3d} {1:39}{2:23} {3:2d} {4:17}{5:10}{6:5d} {7:7}{8:3d}{9:3d}{10:3d}{11:3d}  {12:40}{13:5d}{14:40}".format(
+                                i[0], str(i[1]), str(i[2]), i[3], str(i[4]), str(i[5]), i[6], str(i[7]), i[8], i[9], i[10], i[11], str(i[12]), i[13], str(i[14])))
 
 class Main(Tk):
     def __init__(self):
@@ -208,9 +214,10 @@ class Main(Tk):
         self.title("SW Minis Drafter")
         w, h = self.winfo_screenwidth(), self.winfo_screenheight()
         self.overrideredirect(1)
-        self.geometry("%dx%d+0+0" % (w, h))
+        self.geometry("%dx%d+0+0" % (w, h-50))
         self.focus_set()  # <-- move focus to this widget
         self.bind("<Escape>", lambda e: e.widget.quit())
+        self.bind('<Return>', lambda x: DbFrame.refreshfilters(self))
 
         database = "./DB/SWminis.db"
         self.conn = self.create_connection(database)
@@ -227,8 +234,8 @@ class Main(Tk):
 
         self.db_menubar = Menu(self)
         self.db_menubar.add_cascade(label="Refresh Filters", command=lambda: DbFrame.refreshfilters(self))
-        self.db_menubar.add_cascade(label="Load Player File", command=lambda: DbFrame.loadplayer())
-        self.db_menubar.add_command(label="All Minis")
+        #self.db_menubar.add_cascade(label="Load Player File", command=lambda: DbFrame.loadplayer())
+        #self.db_menubar.add_command(label="All Minis")
         self.db_menubar.add_command(label="Pack Generator", command=lambda: self.show_frame("PackFrame"))
         self.db_menubar.add_cascade(label="Close", command=lambda: self.safeclose())
 
@@ -284,6 +291,15 @@ class Main(Tk):
 
     def safeclose(self):
         print("do stuff before closing, like closing open files/db connections?")
+        folder = './tmp/'
+        for the_file in os.listdir(folder):
+            file_path = os.path.join(folder, the_file)
+            try:
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
+                # elif os.path.isdir(file_path): shutil.rmtree(file_path)
+            except Exception as e:
+                print(e)
         self.destroy()
 
     def create_connection(self, db_file):
@@ -319,15 +335,16 @@ class Main(Tk):
         cost = 0
         cardlist=[]
         minilist=[]
+        """you can pass cost and can this"""
         for x in range(list.size()):
             minilist.append(list.get(x).split("_")[0])
             cardlist.append(list.get(x).split("_")[1])
             cost += int(list.get(x).split("_")[2])
 
-        filename = filedialog.asksaveasfile(initialdir="./custom",title='Name your cardlist',defaultextension = str(cost)+'.pdf')
-        if filename is None:  # asksaveasfile return `None` if dialog closed with "cancel".
+        file = filedialog.asksaveasfile(initialdir="./custom",title='Name your cardlist',defaultextension = str(cost)+'.pdf')
+        if file is None:  # asksaveasfile return `None` if dialog closed with "cancel".
             return
-
+        filename = str(file.name.split("/")[-1:]).split(".")[0][2:]
         pdf = FPDF()
         pdf.set_font('Arial', 'B', 10)
 
@@ -336,47 +353,65 @@ class Main(Tk):
         print(cardlist)
         pagecount = len(cardlist) // 8 + 1
         page=0
-        size = 65
-        width = 64
+        width = 63
         height = width * 1.39
+        row=3
         for x, i in enumerate(cardlist):
             card = ("./cards/" + str(i) + ".jpg")
             im = Image.open(card)
             imgwidth, imgheight = im.size
             imback = im.crop((imgwidth / 2, 0, imgwidth, imgheight))
             imback.save("tmp\\" + str(x) + "temp.png")
-            if (x // 8+1) > page:
+            if (x // 9+1) > page:
                 page+=1
                 pdf.add_page()
-                row=0
-                pdf.text(x=10, y=5, txt="Filename")
-                pdf.rect(x=138, y=191, w=width, h=height)
-            row = x // 3
+                row+=-3
+                pdf.text(x=10, y=7, txt=str(filename)+" - "+str(cost)+" Point Squad - Page"+str(page))
+            rowf = x // 3+row
             col = x % 3
-            #print ("page:",page,"card",x+1," - Put it in row/col",row,col)
-            pdf.image("tmp\\" + str(x) + "temp.png", x=col * size + 8, y=row * size * 1.39+10, w=width, h=height)  # , x=10, y=8, w=100)
-            pdf.text(x=143, y=201 + x * 4, txt=str(i[2]) + "  [" + str(minilist[x]) + "]")
-        print (filename.name)
-        pdf.output(filename.name)
+            pdf.image("tmp\\" + str(x) + "temp.png", x=col * (width+2) + 8, y=rowf * (width+2) * 1.39 + 10, w=width, h=height)
+        #pdf.rect(x=138, y=191, w=width, h=height)
+        #pdf.text(x=143, y=201 + x * 4, txt=str(i[2]) + "  [" + str(minilist[x]) + "]")
+        pdf.output(file.name)
 
 
     def popup(self):
         popupWindow = Toplevel(self)
         popupWindow.attributes('-topmost', 'true')
-        popupWindow.geometry("400x200")
+        popupWindow.geometry("300x200")
         self.lb2 = Listbox(popupWindow, width=50, height=10)
-        self.lb2.grid(row=0, column=0)
-        popcost = StringVar()
-        popcount = StringVar()
-        Label (popupWindow,text="Total Cost:",textvariable=popcost).grid(row=1,column=0)
-        Button(popupWindow, text="export", command=lambda : Main.exportlb(self,self.lb2)).grid(row=1,column=1)
+        self.lb2.grid(row=0, column=0, columnspan=3)
+
+        self.count_label = StringVar()
+        self.count=0
+        self.count_label.set("Count: "+str(self.count))
+        count_label = Label(popupWindow, textvariable=self.count_label)
+        count_label.grid(row=1, column=0)
+
+        self.cost_label = StringVar()
+        self.cost_label.set("Points: 0")
+        count_label = Label(popupWindow, textvariable=self.cost_label)
+        count_label.grid(row=1, column=1)
+
+        evoke = Button(popupWindow, text="Export Minis", command=lambda: Main.exportlb(self,self.lb2))
+        evoke.grid(row=1, column=2)
+        #Button(popupWindow, text="export", command=lambda : Main.exportlb(self,self.lb2)).grid(row=1,column=1)
 
 
     def sendcharacter(self,char):
         setshort=self.SETS[1][self.SETS[0].index(char[2])]+str("{:02d}".format(char[3])) #references the setlist for the shortname of the set the mini is from and rounds the id to two digits.
         self.lb2.insert(0,str(char[1])+"_"+str(setshort)+"_"+str(char[6]))
         self.lb2.bind('<Double-1>', lambda x: self.lb2.delete(self.lb2.index(self.lb2.curselection())))
-        #popcount.set 
+
+        self.count = self.lb2.size()
+        self.count_label.set("Count: " + str(self.count))
+
+        cost = 0
+        for x in range(self.lb2.size()):
+            cost += int(self.lb2.get(x).split("_")[2])
+        self.cost_label.set("Points: " + str(cost))
+
+        #popcount.set
 
 
 if __name__ == "__main__":
