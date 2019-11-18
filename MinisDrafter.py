@@ -190,15 +190,11 @@ class DbFrame(Frame):
             #DbFrame.refreshfilters()
 
     def refreshfilters(self):
-        #columnwidth = [20, 12, 3, 10, 4, 3, 5, 3, 3, 3, 3, 20, 3, 20, 3]
-        #row_format = "{:<20}  {:>12}  {:<3}  {:10}  {:4}  {:3}  {:5}  {:3}  {:3}  {:3}  {:3}  {:20}  {:3}  {:20}  {:5}"  # left or right align, with an arbitrary '8' column width
         self.lb1.delete(1,1000)
         statements =[False] * 16
         statements[0] = "SELECT * FROM minis_list "
-        #if setfilter: statements[0]+
         first = False
-        
-        
+
         for x,i in enumerate(self.colheadVar,1):
             val=i.get()
             filtered=""
@@ -210,7 +206,7 @@ class DbFrame(Frame):
                 else :
                     if ">" in val or "<" in val: statements[x] = " AND \"" + self.headers[x-1] + "\" "+ val
                     else: statements[x]=" AND \""+self.headers[x-1]+"\" LIKE \"%"+val+"%\""
-        command =""
+        command = ""
         for x in statements:
             if x: command += str(x)
         print(command)
