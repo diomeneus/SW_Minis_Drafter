@@ -151,7 +151,7 @@ class DbFrame(Frame):
         controller.headers = ["name", "set", "id", "faction", "rarity", "pts", "size", "hp", "df", "at",
                               "dm", "special abilities", "FP", "force powers", "cnt"]
         +3
-        columnwidth =        [49,      31,    4,   19,         14,       4,      9,     3,    3,    3,
+        columnwidth =        [49,      24,    4,   19,         14,       4,      9,     3,    3,    3,
                               3,      36,                  3,         38,           5]
         var_set = StringVar()
         for x, i in enumerate(controller.headers):
