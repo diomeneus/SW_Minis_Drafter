@@ -164,6 +164,7 @@ class DbFrame(Frame):
                      "Masters of the Force", "Revenge of the Sith", "Rebel Storm", "Dark Times", "Universe")
                  w.config(width= columnwidth[x])
                  w.grid(sticky="W",row=1, column=x)
+                 var_set.trace_variable("w", lambda x,y,z: self.testme(x,y,z))#DbFrame.refreshfilters(self))
              # elif i == "faction":
              #     self.filter_set.grid(sticky="W",row=1, column=x)
              # elif i == "rarity":
@@ -189,8 +190,13 @@ class DbFrame(Frame):
             """do something to mod the count column with the file you get"""
             #DbFrame.refreshfilters()
 
+    def testme(self,one,two,three):
+        print (one)
+        print (two)
+        print (three)
+
     def refreshfilters(self):
-        self.lb1.delete(1,1000)
+        self.lb1.delete(0,1000)
         statements =[False] * 16
         statements[0] = "SELECT * FROM minis_list "
         first = False
@@ -248,6 +254,7 @@ class Main(Tk):
         #self.db_menubar.add_cascade(label="Load Player File", command=lambda: DbFrame.loadplayer())
         #self.db_menubar.add_command(label="All Minis")
         self.db_menubar.add_command(label="Pack Generator", command=lambda: self.show_frame("PackFrame"))
+        self.db_menubar.add_command(label="Mini Maker", command=lambda : self.minimaker())
         self.db_menubar.add_cascade(label="Close", command=lambda: self.safeclose())
 
         self.SETS = ["Alliance and Empire", "Bounty Hunters", "Alliance and Empire", "Champions of the Force", "Clone Strike", "The Clone Wars",
@@ -379,8 +386,6 @@ class Main(Tk):
             rowf = x // 3+row
             col = x % 3
             pdf.image("tmp\\" + str(x) + "temp.png", x=col * (width+2) + 8, y=rowf * (width+2) * 1.39 + 10, w=width, h=height)
-        #pdf.rect(x=138, y=191, w=width, h=height)
-        #pdf.text(x=143, y=201 + x * 4, txt=str(i[2]) + "  [" + str(minilist[x]) + "]")
         pdf.output(file.name)
 
 
@@ -406,7 +411,6 @@ class Main(Tk):
         evoke.grid(row=1, column=2)
         #Button(popupWindow, text="export", command=lambda : Main.exportlb(self,self.lb2)).grid(row=1,column=1)
 
-
     def sendcharacter(self,char):
         name = char[3:42].rstrip(" ")
         set = char[43:70].rstrip(" ") #interprets the line sent and takes the set out of it.
@@ -424,6 +428,95 @@ class Main(Tk):
         for x in range(self.lb2.size()):
             cost += int(self.lb2.get(x).split("_")[2])
         self.cost_label.set("Points: " + str(cost))
+
+    def minimaker(self):
+        makerWindow = Toplevel(self)
+        makerWindow.attributes('-topmost', 'true')
+        makerWindow.geometry("700x550")
+        self.hitpoints = IntVar()
+        self.hitpoints.set(10)
+        self.defense = IntVar()
+        self.defense.set(13)
+        self.attack = IntVar()
+        self.attack.set(4)
+        self.damage = IntVar()
+        self.damage.set(10)
+
+        self.minicost = IntVar()
+        self.minicost.set(5)
+
+        #miniframe = LabelFrame(makerWindow).grid(row=0,column=0)
+        #count_hitpoints = Label(makerWindow, textvariable=self.hitpoints).grid(row=1,column=1)
+        Label (makerWindow,text="Name: ").grid(row=0,column=2)
+        name = StringVar(value='unnamed')
+        namefld = Entry(makerWindow,width=10,textvariable=name).grid(row=0,column=3)
+        Button(makerWindow, text="↑", command=lambda: modstat(self.hitpoints, 10)).grid(row=1, column=2)
+        Button(makerWindow, text="↓", command=lambda: modstat(self.hitpoints, -10)).grid(row=1, column=3)
+        #count_hitpoints.place(x=100,y=100)
+
+        #count_defense = Label(makerWindow, textvariable=self.defense).grid(row=2,column=0)
+        Button(makerWindow, text="↑", command=lambda: modstat(self.defense, 1)).grid(row=2, column=2)
+        Button(makerWindow, text="↓", command=lambda: modstat(self.defense, -1)).grid(row=2, column=3)
+
+        #count_attack = Label(makerWindow, textvariable=self.attack).grid(row=3,column=0)
+        Button(makerWindow, text="↑", command=lambda: modstat(self.attack, 1)).grid(row=3, column=2)
+        Button(makerWindow, text="↓", command=lambda: modstat(self.attack, -1)).grid(row=3, column=3)
+
+        #count_damage = Label(makerWindow, textvariable=self.damage).grid(row=4,column=0)
+        Button(makerWindow, text="↑", command=lambda: modstat(self.damage, 10)).grid(row=4, column=2)
+        Button(makerWindow, text="↓", command=lambda: modstat(self.damage, -10)).grid(row=4, column=3)
+        font = ImageFont.truetype('impact',size=16)
+
+        def modstat(stat,dir):
+            ministat = stat
+            ministat.set(ministat.get()+dir)
+            refreshcost()
+
+        def refreshcost():
+            hitpoints = self.hitpoints.get()
+            defense = self.defense.get()
+            attack =self.attack.get()
+            damage =self.damage.get()
+            ranks_hp=hitpoints/10-1
+            ranks_def=defense-13
+            ranks_atk=attack-4
+            ranks_dmg=damage/10-1
+            dmgtax=0.25
+            cost_hp = ranks_hp**2/2
+            cost_def = ranks_def ** 2 / 2
+            cost_atk = ranks_atk ** 2 / 2
+            cost_dmg = ranks_dmg ** 2
+            cost_dmgtax = dmgtax*(ranks_hp+ranks_def+ranks_atk+ranks_dmg)
+
+            minicost = floor(cost_hp+cost_def+cost_atk+cost_dmg+cost_dmgtax)
+
+            card = ("./minimaker/01_blank_template.jpg")
+            im = Image.open(card)
+            imgwidth, imgheight = im.size
+            imback = im.crop((imgwidth / 2, 0, imgwidth, imgheight))
+            sizesm = int(imgwidth / 4), int(imgheight / 2)
+            imback = imback.resize(sizesm, resample=Image.ANTIALIAS)
+            draw = ImageDraw.Draw(imback)
+            draw.text((102, 85), str(hitpoints),(0,0,0),font=font)
+            draw.text((102, 138), str(defense), (0, 0, 0),font=font)
+            draw.text((100, 190), "+"+str(attack), (0, 0, 0),font=font)
+            draw.text((102, 243), str(damage), (0, 0, 0),font=font)
+
+            draw.text((332, 25), str(minicost), (0, 0, 0),font=font)
+            draw.text((132, 25), str(name.get()), (255, 255, 255), font=font)
+
+            #imback = Image.
+            #draw.save("./minimaker/temp2.png")
+            imback.save("./minimaker/temp.png")
+
+            load = Image.open("./minimaker/temp.png")
+            render = ImageTk.PhotoImage(load)
+            img = Label(makerWindow, image=render, width=imgwidth/4, height=imgheight/2)
+            img.image = render
+            #col = x % 4
+            #if (x % 4 == 0): rw += 1
+            img.grid(row=0, column=0,rowspan=12)
+        refreshcost()
 
 
 
