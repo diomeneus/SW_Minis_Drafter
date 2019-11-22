@@ -441,54 +441,79 @@ class Main(Tk):
         self.attack.set(4)
         self.damage = IntVar()
         self.damage.set(10)
+        self.unique = IntVar()
+        self.unique.set(0)
+        self.melee = StringVar()
+        self.melee.set("0")
+
+        self.force = IntVar()
+        self.force.set(0)
 
         self.minicost = IntVar()
         self.minicost.set(5)
 
-        #miniframe = LabelFrame(makerWindow).grid(row=0,column=0)
-        #count_hitpoints = Label(makerWindow, textvariable=self.hitpoints).grid(row=1,column=1)
+        bigfont = ImageFont.truetype('impact', size=20)
+        font = ImageFont.truetype('impact', size=16)
+        smfont = ImageFont.truetype('impact', size=12)
+
         Label (makerWindow,text="Name: ").grid(row=0,column=2)
         name = StringVar(value='unnamed')
         namefld = Entry(makerWindow,width=10,textvariable=name).grid(row=0,column=3)
-        Button(makerWindow, text="↑", command=lambda: modstat(self.hitpoints, 10)).grid(row=1, column=2)
-        Button(makerWindow, text="↓", command=lambda: modstat(self.hitpoints, -10)).grid(row=1, column=3)
-        #count_hitpoints.place(x=100,y=100)
 
-        #count_defense = Label(makerWindow, textvariable=self.defense).grid(row=2,column=0)
-        Button(makerWindow, text="↑", command=lambda: modstat(self.defense, 1)).grid(row=2, column=2)
-        Button(makerWindow, text="↓", command=lambda: modstat(self.defense, -1)).grid(row=2, column=3)
+        statframe = LabelFrame (makerWindow,text="Stats")
+        statframe.grid(row=1,column=2,rowspan=4,columnspan=2)
+        Label(statframe,text="HP").grid(row=0,column=0)
+        Button(statframe, text="↑",width=2, command=lambda: modstat(self.hitpoints, 10)).grid(row=0, column=1)
+        Button(statframe, text="↓",width=2, command=lambda: modstat(self.hitpoints, -10)).grid(row=0, column=2)
 
-        #count_attack = Label(makerWindow, textvariable=self.attack).grid(row=3,column=0)
-        Button(makerWindow, text="↑", command=lambda: modstat(self.attack, 1)).grid(row=3, column=2)
-        Button(makerWindow, text="↓", command=lambda: modstat(self.attack, -1)).grid(row=3, column=3)
+        Label(statframe, text="Defense").grid(row=1, column=0)
+        Button(statframe, text="↑",width=2, command=lambda: modstat(self.defense, 1)).grid(row=1, column=1)
+        Button(statframe, text="↓",width=2, command=lambda: modstat(self.defense, -1)).grid(row=1, column=2)
 
-        #count_damage = Label(makerWindow, textvariable=self.damage).grid(row=4,column=0)
-        Button(makerWindow, text="↑", command=lambda: modstat(self.damage, 10)).grid(row=4, column=2)
-        Button(makerWindow, text="↓", command=lambda: modstat(self.damage, -10)).grid(row=4, column=3)
-        font = ImageFont.truetype('impact',size=16)
+        Label(statframe, text="Attack").grid(row=2, column=0)
+        Button(statframe, text="↑",width=2, command=lambda: modstat(self.attack, 1)).grid(row=2, column=1)
+        Button(statframe, text="↓",width=2, command=lambda: modstat(self.attack, -1)).grid(row=2, column=2)
+
+        Label(statframe, text="Damage").grid(row=3, column=0)
+        Button(statframe, text="↑",width=2, command=lambda: modstat(self.damage, 10)).grid(row=3, column=1)
+        Button(statframe, text="↓",width=2, command=lambda: modstat(self.damage, -10)).grid(row=3, column=2)
+
+        Label(statframe, text="Force").grid(row=4, column=0)
+        Button(statframe, text="↑", width=2, command=lambda: modstat(self.force, 1)).grid(row=4, column=1)
+        Button(statframe, text="↓", width=2, command=lambda: modstat(self.force, -1)).grid(row=4, column=2)
+
+        Checkbutton(makerWindow,text="Unique", variable=self.unique, onvalue=20, offvalue=0).grid(row=1,column=5)
+        Checkbutton(makerWindow, text="Melee", variable=self.melee, onvalue=-0.15, offvalue=0).grid(row=2, column=5)
+
+        """unique, melee, options box to pick a race..."""
 
         def modstat(stat,dir):
-            ministat = stat
-            ministat.set(ministat.get()+dir)
-            refreshcost()
+                ministat = stat
+                ministat.set(ministat.get()+dir)
+                refreshcost()
 
         def refreshcost():
+            txtoffset=0
+
             hitpoints = self.hitpoints.get()
             defense = self.defense.get()
             attack =self.attack.get()
             damage =self.damage.get()
+            force = self.force.get()
+
             ranks_hp=hitpoints/10-1
             ranks_def=defense-13
             ranks_atk=attack-4
             ranks_dmg=damage/10-1
-            dmgtax=0.25
+            dmgtax=0.25+float(self.melee.get())
             cost_hp = ranks_hp**2/2
             cost_def = ranks_def ** 2 / 2
             cost_atk = ranks_atk ** 2 / 2
             cost_dmg = ranks_dmg ** 2
             cost_dmgtax = dmgtax*(ranks_hp+ranks_def+ranks_atk+ranks_dmg)
+            print (cost_dmgtax)
 
-            minicost = floor(cost_hp+cost_def+cost_atk+cost_dmg+cost_dmgtax)
+            minicost = round(cost_hp+cost_def+cost_atk+cost_dmg+cost_dmgtax+force+5)
 
             card = ("./minimaker/01_blank_template.jpg")
             im = Image.open(card)
@@ -497,13 +522,23 @@ class Main(Tk):
             sizesm = int(imgwidth / 4), int(imgheight / 2)
             imback = imback.resize(sizesm, resample=Image.ANTIALIAS)
             draw = ImageDraw.Draw(imback)
-            draw.text((102, 85), str(hitpoints),(0,0,0),font=font)
+
+            draw.text((60, 15), str(name.get()), (255, 255, 255), font=bigfont)
+            draw.text((332, 25), str(minicost), (0, 0, 0), font=font)
+
+            draw.text((102, 85), str(hitpoints+self.unique.get()),(0,0,0),font=font)
             draw.text((102, 138), str(defense), (0, 0, 0),font=font)
             draw.text((100, 190), "+"+str(attack), (0, 0, 0),font=font)
             draw.text((102, 243), str(damage), (0, 0, 0),font=font)
-
-            draw.text((332, 25), str(minicost), (0, 0, 0),font=font)
-            draw.text((132, 25), str(name.get()), (255, 255, 255), font=font)
+            if self.unique.get() > 0:
+                draw.text((145, 93 + txtoffset), "Unique", (0, 0, 0), font=smfont)
+                txtoffset += 20
+            if not self.melee.get() == "0":
+                draw.text((145, 93+txtoffset), "Melee", (0, 0, 0), font=smfont)
+                txtoffset += 20
+            if force > 0:
+                draw.text((145, 93 + txtoffset), "Force " + str(force), (0, 0, 0), font=smfont)
+                txtoffset += 20
 
             #imback = Image.
             #draw.save("./minimaker/temp2.png")
