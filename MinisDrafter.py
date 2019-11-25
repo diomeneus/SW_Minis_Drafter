@@ -432,7 +432,10 @@ class Main(Tk):
     def minimaker(self):
         makerWindow = Toplevel(self)
         makerWindow.attributes('-topmost', 'true')
-        makerWindow.geometry("700x550")
+        makerWindow.geometry("700x525")
+        card = ("./minimaker/templates/01_fringe_template.png")
+        self.cardchanged = True
+
         self.hitpoints = IntVar()
         self.hitpoints.set(10)
         self.defense = IntVar()
@@ -446,6 +449,22 @@ class Main(Tk):
         self.melee = StringVar()
         self.melee.set("0")
 
+        self.abilities = []
+        self.abilitiesfull = []
+        file = open("./minimaker/abilitylist.txt")
+        filelist = file.readlines()
+        for i in filelist:
+            print (i)
+            self.abilitiesfull.append(i)
+        self.forcepowers = []
+        self.forcepowersfull = []
+        file = open("./minimaker/forcepowers.txt")
+        filelist = file.readlines()
+        for i in filelist:
+            print(i)
+            self.forcepowersfull.append(i)
+        file.close()
+
         self.force = IntVar()
         self.force.set(0)
 
@@ -458,7 +477,7 @@ class Main(Tk):
 
         Label (makerWindow,text="Name: ").grid(row=0,column=2)
         name = StringVar(value='unnamed')
-        namefld = Entry(makerWindow,width=10,textvariable=name).grid(row=0,column=3)
+        namefld = Entry(makerWindow,width=20,textvariable=name).grid(row=0,column=3)
 
         statframe = LabelFrame (makerWindow,text="Stats")
         statframe.grid(row=1,column=2,rowspan=4,columnspan=2)
@@ -485,12 +504,65 @@ class Main(Tk):
         Checkbutton(makerWindow,text="Unique", variable=self.unique, onvalue=20, offvalue=0).grid(row=1,column=5)
         Checkbutton(makerWindow, text="Melee", variable=self.melee, onvalue=-0.15, offvalue=0).grid(row=2, column=5)
 
+        self.race = StringVar()
+        racemenu = OptionMenu(makerWindow, self.race, "None","Droid", "Cyborg", "Ewok", "Trandoshan", "Ugnaught", "Wookie", "Gungan")
+        racemenu.config(width=10)
+        racemenu.grid(row=3,column=5)
+        Label(makerWindow,text="Race").grid(row=3,column=4)
+
+        self.faction = StringVar(value="Fringe")
+
+        factionmenu = OptionMenu(makerWindow, self.faction, "Fringe", "Rebel", "Old Republic", "Republic", "New Republic", "Imperial", "Seperatist", "Sith", "Yuuzhan Vong", "Mandalorian")
+        factionmenu.config(width=10)
+        factionmenu.grid(row=4, column=5)
+        Label(makerWindow, text="Faction").grid(row=4, column=4)
+        self.faction.trace_variable("w", lambda x,y,z: factionchanged(x,y,z))  # DbFrame.refreshfilters(self))
+
+        #OptionMenu(makerWindow,textvariable=)
+        Button(makerWindow, text="Export", width=5, command=lambda: tempdef()).grid(row=7, column=2)
+        abilitiesframe = LabelFrame (makerWindow,text="Abilities")
+        forceframe = LabelFrame(makerWindow, text="Force Powers")
+        abilitiesframe.grid(row=6, column=2,columnspan=2)
+        forceframe.grid(row=6, column=4,columnspan=2)
+
+        abilitieslb = Listbox(abilitiesframe, width=25, height=10)  # ,font=monofont)
+        #abilitieslb.configure(font=monofont)
+        abilitieslb.grid(row=0, column=0)
+        abilitieslb.bind('<Double-1>', lambda x: addability(abilitieslb.index(abilitieslb.curselection())))
+        for x, i in enumerate(self.abilitiesfull):
+            abilitieslb.insert(x,i)
+
+        forcelb = Listbox(forceframe, width=25, height=10)  # ,font=monofont)
+        # abilitieslb.configure(font=monofont)
+        forcelb.grid(row=0, column=0)
+        #forcelb.bind('<Double-1>', lambda x: addforce(forcelb.index(forcelb.curselection())))
+        forcelb.bind('<Double-1>', lambda x: tempdef(forcelb.index(forcelb.curselection())))
+        #forcelb.bind('<Double-1>', lambda x: tempdef(forcelb.curselection()))
+
+        for x, i in enumerate(self.forcepowersfull):
+            forcelb.insert(x, i)
+
         """unique, melee, options box to pick a race..."""
+        def tempdef(cmom):
+            print (cmom)
+            
+
+        def addability(thing):
+            self.abilities.append(thing)
+
+        def addforce(thing):
+            self.forcepowers.append(thing)
+
+        def factionchanged(ignorea,ignoreb,ignorec):
+            self.cardchanged=True
+            print ("faction changed")
+            refreshcost()
+
 
         def modstat(stat,dir):
-                ministat = stat
-                ministat.set(ministat.get()+dir)
-                refreshcost()
+            ministat = stat
+            ministat.set(ministat.get()+dir)
+            refreshcost()
 
         def refreshcost():
             txtoffset=0
@@ -514,8 +586,10 @@ class Main(Tk):
             print (cost_dmgtax)
 
             minicost = round(cost_hp+cost_def+cost_atk+cost_dmg+cost_dmgtax+force+5)
-
-            card = ("./minimaker/01_blank_template.jpg")
+            if self.cardchanged:
+                card = ("./minimaker/templates/01_"+str(self.faction.get())+"_template.png")
+                self.cardchange = False
+            print (card)
             im = Image.open(card)
             imgwidth, imgheight = im.size
             imback = im.crop((imgwidth / 2, 0, imgwidth, imgheight))
@@ -531,25 +605,29 @@ class Main(Tk):
             draw.text((100, 190), "+"+str(attack), (0, 0, 0),font=font)
             draw.text((102, 243), str(damage), (0, 0, 0),font=font)
             if self.unique.get() > 0:
-                draw.text((145, 93 + txtoffset), "Unique", (0, 0, 0), font=smfont)
+                draw.text((145, 95 + txtoffset), "Unique", (0, 0, 0), font=smfont)
+                txtoffset += 20
+            if not self.race.get() == "None":
+                draw.text((145, 95 + txtoffset), self.race.get(), (0, 0, 0), font=smfont)
                 txtoffset += 20
             if not self.melee.get() == "0":
-                draw.text((145, 93+txtoffset), "Melee", (0, 0, 0), font=smfont)
+                draw.text((145, 95+txtoffset), "Melee", (0, 0, 0), font=smfont)
+                txtoffset += 20
+            for x in self.abilities:
+                print (x)
+                draw.text((145, 95 + txtoffset), str(x)(0,0,0),font=smfont)
                 txtoffset += 20
             if force > 0:
-                draw.text((145, 93 + txtoffset), "Force " + str(force), (0, 0, 0), font=smfont)
+                draw.text((145, 100 + txtoffset), "Force " + str(force), (0, 0, 0), font=smfont)
+                txtoffset += 20
+            for x in self.forcepowers:
+                print(x)
+                draw.text((145, 95 + txtoffset), str(x)(0, 0, 0), font=smfont)
                 txtoffset += 20
 
-            #imback = Image.
-            #draw.save("./minimaker/temp2.png")
-            imback.save("./minimaker/temp.png")
-
-            load = Image.open("./minimaker/temp.png")
-            render = ImageTk.PhotoImage(load)
+            render = ImageTk.PhotoImage(imback)
             img = Label(makerWindow, image=render, width=imgwidth/4, height=imgheight/2)
             img.image = render
-            #col = x % 4
-            #if (x % 4 == 0): rw += 1
             img.grid(row=0, column=0,rowspan=12)
         refreshcost()
 
