@@ -152,12 +152,13 @@ class DbFrame(Frame):
         bottomframe.grid(row=2, column=0)
 
         controller.colheadVar = []
-        controller.headers = ["name", "set", "id", "faction", "rarity", "pts", "size", "hp", "df", "at",
-                              "dm", "special abilities", "FP", "force powers", "cnt"]
+        controller.headers = ["name", "set", "id", "faction", "rarity", "cost", "size", "hp", "df", "at",
+                              "dm", "special abilities", "FP", "force powers", "player"]
         +3
         columnwidth = [49, 24, 4, 19, 14, 4, 9, 3, 3, 3,
                        3, 36, 3, 38, 5]
         var_set = StringVar()
+        var_player= StringVar()
         for x, i in enumerate(controller.headers):
             controller.colheadVar.append(StringVar(self))
             # print (x,i)
@@ -171,7 +172,12 @@ class DbFrame(Frame):
                 w.config(width=columnwidth[x])
                 w.grid(sticky="W", row=1, column=x)
                 var_set.trace_variable("w", lambda x, y, z: self.testme(x, y, z))  # DbFrame.refreshfilters(self))
-            # elif i == "faction":
+            elif i == "player":
+                p = OptionMenu(topframe, var_player, "None", "Matt")
+                p.config(width=len(i)-4)#columnwidth[x])
+                p.grid(sticky="W", row=1, column=x)
+                var_player.trace_variable("w", lambda x, y, z: self.testme(x, y, z))  # DbFrame.refreshfilters(self))
+
             #     self.filter_set.grid(sticky="W",row=1, column=x)
             # elif i == "rarity":
             #     self.filter_set.grid(sticky="W",row=1, column=x)
@@ -184,6 +190,8 @@ class DbFrame(Frame):
         controller.lb1 = Listbox(bottomframe, width=200, height=100)  # ,font=monofont)
         controller.lb1.configure(font=monofont)
         controller.lb1.grid(row=0, column=0)
+        controller.lb1.bind('<<ListboxSelect>>', lambda x: controller.preview(
+            controller.lb1.get(controller.lb1.index(controller.lb1.curselection()))))  # addme
         controller.lb1.bind('<Double-1>', lambda x: controller.sendcharacter(
             controller.lb1.get(controller.lb1.index(controller.lb1.curselection()))))
         datarows = []
@@ -191,7 +199,7 @@ class DbFrame(Frame):
 
         def loadplayer():
             filename = filedialog.askopenfilename(initialdir="./players")
-            if filename is None:  # asksaveasfile return `None` if dialog closed with "cancel".
+            if filename is None:
                 return
             print(filename)
             db_menubar.entryconfig(2, label="Custom")
@@ -430,8 +438,8 @@ class Main(Tk):
     def popup(self):
         popupWindow = Toplevel(self)
         popupWindow.attributes('-topmost', 'true')
-        popupWindow.geometry("300x200")
-        self.lb2 = Listbox(popupWindow, width=50, height=10)
+        popupWindow.geometry("550x350")
+        self.lb2 = Listbox(popupWindow, width=50, height=20)
         self.lb2.grid(row=0, column=0, columnspan=3)
 
         self.count_label = StringVar()
@@ -445,9 +453,41 @@ class Main(Tk):
         count_label = Label(popupWindow, textvariable=self.cost_label)
         count_label.grid(row=1, column=1)
 
+        im = Image.open("./cards\\nopreview.png")
+        imgwidth, imgheight = im.size
+        im = im.resize((int(imgwidth / 3), int(imgheight / 3)), Image.ANTIALIAS)
+        imgwidth, imgheight = im.size
+        print(im.size)
+        im = ImageTk.PhotoImage(im)
+
+        self.preview_lbl = Label(popupWindow, image=im)
+        self.preview_lbl.image = im
+        self.preview_lbl.grid(row=0, column=4, rowspan=2)
+
         evoke = Button(popupWindow, text="Export Minis", command=lambda: Main.exportlb(self, self.lb2))
         evoke.grid(row=1, column=2)
         # Button(popupWindow, text="export", command=lambda : Main.exportlb(self,self.lb2)).grid(row=1,column=1)
+
+    def preview(self, char):
+        if len(char) > 100:
+            print("list")
+            name = char[3:42].rstrip(" ")
+            set = char[43:70].rstrip(" ")  # interprets the line sent and takes the set out of it.
+            id = "{:02d}".format(int(char[71:73].strip(" ")))
+            cost = "{:02d}".format(int(char[103:106].strip(" ")))
+            setshort = self.SETS[1][self.SETS[0].index(set)] + id
+        else:
+            print("not a list", char)
+            setshort = char.split("_")[1]
+            print(setshort)
+        card = ("./cards/" + setshort + ".jpg")
+        im = Image.open(card)
+        imgwidth, imgheight = im.size
+        imback = im.crop((imgwidth / 2, 0, imgwidth, imgheight))
+        imback = imback.resize((int(imgwidth / 6), int(imgheight / 3)), Image.ANTIALIAS)
+        imback = ImageTk.PhotoImage(imback)
+        self.preview_lbl.configure(image=imback)
+        self.preview_lbl.image = imback
 
     def sendcharacter(self, char):
         name = char[3:42].rstrip(" ")
@@ -459,6 +499,8 @@ class Main(Tk):
 
         # print (name+"_"+setshort+"_"+cost)
         self.lb2.insert(0, name + "_" + setshort + "_" + cost)
+        self.lb2.bind('<<ListboxSelect>>',
+                      lambda x: self.preview(self.lb2.get(self.lb2.index(self.lb2.curselection()))))  # addme
         self.lb2.bind('<Double-1>', lambda x: self.lb2.delete(self.lb2.index(self.lb2.curselection())))
         self.count = self.lb2.size()
         self.count_label.set("Count: " + str(self.count))
@@ -490,11 +532,11 @@ class Main(Tk):
 
         self.abilities = []
         self.abilitiesfull = []
-        file = open("./minimaker/abilitylist.csv")
+        file = open("./minimaker/abilitylist.tsv", encoding="utf8")
         filelist = file.readlines()
         for i in filelist:
-            #print(i)
-            self.abilitiesfull.append(i.split(","))
+            print(i)
+            self.abilitiesfull.append(i.split("\t"))
 
         self.forcepowers = []
         self.forcepowersfull = []
