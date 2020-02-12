@@ -173,7 +173,7 @@ class DbFrame(Frame):
                                "Champions of the Force", "Clone Strike", "The Clone Wars",
                                "The Force Unleashed", "Galaxy at War", "Imperial Entanglements", "Jedi Academy",
                                "Knights of the Old Republic", "Legacy of the Force",
-                               "Masters of the Force", "Revenge of the Sith", "Rebel Storm", "Dark Times", "Universe")
+                               "Masters of the Force", "Revenge of the Sith", "Rebel Storm", "Dark Times", "Universe","Clone Wars Starter")
                 w.config(width=columnwidth[x])
                 w.grid(sticky="W", row=1, column=x)
                 var_set.trace_variable("w", lambda x, y, z: self.testme(x, y, z))  # DbFrame.refreshfilters(self))
@@ -185,7 +185,7 @@ class DbFrame(Frame):
                 Entry(topframe, width=columnwidth[x], textvariable=controller.colheadVar[x]).grid(sticky="W", row=1,
                                                                                                   column=x)
         # make drop downs for set,faction,rarity,size ... maybe abilities/force
-        controller.lb1 = Listbox(bottomframe, width=200, height=100)  # ,font=monofont)
+        controller.lb1 = Listbox(bottomframe, width=200, height=50)  # ,font=monofont)
         controller.lb1.configure(font=monofont)
         controller.lb1.grid(row=0, column=0)
         controller.lb1.bind('<<ListboxSelect>>', lambda x: controller.preview(
@@ -254,6 +254,7 @@ class DbFrame(Frame):
                             statements[x] = " AND \"" + self.headers[x - 1] + "\" " + val
                         else:
                             statements[x] = " AND \"" + self.headers[x - 1] + "\" LIKE \"%" + val + "%\""
+        statements.append(" ORDER BY minis_list.\"set\" ASC, minis_list.id ASC")
         command = ""
         for x in statements:
             if x: command += str(x)
@@ -331,7 +332,7 @@ class Main(Tk):
                      "Clone Strike", "The Clone Wars",
                      "The Force Unleashed", "Galaxy at War", "Imperial Entanglements", "Jedi Academy",
                      "Knights of the Old Republic", "Legacy of the Force",
-                     "Masters of the Force", "Revenge of the Sith", "Rebel Storm", "Dark Times", "Universe"], ["ae",
+                     "Masters of the Force", "Revenge of the Sith", "Rebel Storm", "Dark Times", "Universe","Clone Wars Starter","Clone Wars Scenario","Battle of Hoth"], ["ae",
                                                                                                                "bh",
                                                                                                                "ae",
                                                                                                                "cotf",
@@ -347,7 +348,10 @@ class Main(Tk):
                                                                                                                "rots",
                                                                                                                "rs",
                                                                                                                "tdt",
-                                                                                                               "uh", ]
+                                                                                                               "uh",
+                                                                                                               "cwsp",
+                                                                                                               "cwmp",
+                                                                                                               "boh"]
         self.FACTIONS = ["Rebel", "Imperial", "The Old Republic", "The New Republic", "Sith", "Republic", "Seperatist",
                          "Yuuzhan Vong", "Mandolorian", "Fringe"]
 
