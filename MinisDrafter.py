@@ -152,14 +152,19 @@ class DbFrame(Frame):
         bottomframe.grid(row=2, column=0)
 
         controller.colheadVar = []
-        controller.headers = ["name", "set", "id", "faction", "rarity", "cost", "size", "hp", "df", "at",
-                              "dm", "special abilities", "FP", "force powers", "player"]
+        controller.headers = ["name", "set", "id", "faction", "rarity", "cost", "size", "hit points", "defense", "attack",
+                              "damage", "special abilities", "force points", "force powers", "qty"]
+        controller.headers_labels = ["name", "set", "id", "faction", "rarity", "cost", "size", "hp", "df",
+                              "at",
+                              "dm", "special abilities", "fp", "force powers", "qty"]
         +3
-        columnwidth = [49, 24, 4, 19, 14, 4, 9, 3, 3, 3,
-                       3, 36, 3, 38, 5]
+        columnwidth = [49, 24, 4, 19, 12, 5, 9, 3, 3, 3, 3, 37, 3, 33, 5]
+        #columnwidth = [30, 15, 4, 19, 14, 6, 9, 10, 10, 3, 3, 36, 3, 38, 5]
+
         var_set = StringVar()
-        var_player= StringVar()
-        for x, i in enumerate(controller.headers):
+        controller.var_player= StringVar()
+        controller.var_player.set("None")
+        for x, i in enumerate(controller.headers_labels):
             controller.colheadVar.append(StringVar(self))
             # print (x,i)
             Label(topframe, text=i, width=len(i), font=monofont).grid(sticky="W", row=0, column=x)
@@ -172,17 +177,10 @@ class DbFrame(Frame):
                 w.config(width=columnwidth[x])
                 w.grid(sticky="W", row=1, column=x)
                 var_set.trace_variable("w", lambda x, y, z: self.testme(x, y, z))  # DbFrame.refreshfilters(self))
-            elif i == "player":
-                p = OptionMenu(topframe, var_player, "None", "Matt")
-                p.config(width=len(i)-4)#columnwidth[x])
+            elif i == "qty":
+                p = OptionMenu(topframe, controller.var_player, "None", "Matt")
+                p.config(width=len(i))#columnwidth[x])
                 p.grid(sticky="W", row=1, column=x)
-                var_player.trace_variable("w", lambda x, y, z: self.testme(x, y, z))  # DbFrame.refreshfilters(self))
-
-            #     self.filter_set.grid(sticky="W",row=1, column=x)
-            # elif i == "rarity":
-            #     self.filter_set.grid(sticky="W",row=1, column=x)
-            # elif i == "size":
-            #     self.filter_set.grid(sticky="W",row=1, column=x)
             else:
                 Entry(topframe, width=columnwidth[x], textvariable=controller.colheadVar[x]).grid(sticky="W", row=1,
                                                                                                   column=x)
@@ -195,7 +193,7 @@ class DbFrame(Frame):
         controller.lb1.bind('<Double-1>', lambda x: controller.sendcharacter(
             controller.lb1.get(controller.lb1.index(controller.lb1.curselection()))))
         datarows = []
-        columnwidth = [20, 12, 3, 10, 4, 3, 5, 3, 3, 3, 3, 20, 3, 20]
+        #columnwidth = [20, 12, 3, 10, 4, 3, 5, 3, 3, 3, 3, 20, 3, 20]
 
         def loadplayer():
             filename = filedialog.askopenfilename(initialdir="./players")
@@ -215,24 +213,47 @@ class DbFrame(Frame):
     def refreshfilters(self):
         self.lb1.delete(0, 1000)
         statements = [False] * 16
-        statements[0] = "SELECT * FROM minis_list "
         first = False
-
-        for x, i in enumerate(self.colheadVar, 1):
-            val = i.get()
-            filtered = ""
-            if val:
-                if not first:
-                    first = True
-                    if ">" in val or "<" in val:
-                        statements[x] = "WHERE \"" + self.headers[x - 1] + "\" " + val
-                    else:
-                        statements[x] = "WHERE \"" + self.headers[x - 1] + "\" LIKE \"%" + val + "%\""
-                else:
+        if (self.var_player.get()=="Matt"):
+            statements[0] = """SELECT uniq_id,name,"set",id,faction,rarity,cost,size,"hit points",defense,attack,damage,"special abilities","force points","force powers",
+            CASE 
+                WHEN minis_owned_matts.count IS NULL THEN 0+minis_owned_matts."extra minis" WHEN minis_owned_matts."extra minis" IS NULL THEN 0+minis_owned_matts.count
+                WHEN minis_owned_matts."extra minis" IS NULL THEN 0+minis_owned_matts.count
+                ELSE minis_owned_matts."extra minis"+minis_owned_matts.count
+            END AS "qty" 
+            FROM minis_list 
+            Inner Join minis_owned_matts on minis_list.uniq_id = minis_owned_matts."mini id"
+            WHERE "qty" > 0"""
+            for x, i in enumerate(self.colheadVar, 1):
+                val = i.get()
+                filtered = ""
+                if val:
                     if ">" in val or "<" in val:
                         statements[x] = " AND \"" + self.headers[x - 1] + "\" " + val
                     else:
                         statements[x] = " AND \"" + self.headers[x - 1] + "\" LIKE \"%" + val + "%\""
+
+        if (self.var_player.get()=="None"):
+            statements[0] = "SELECT * FROM minis_list "
+            for x, i in enumerate(self.colheadVar, 1):
+                val = i.get()
+                filtered = ""
+                if val:
+                    if not first:
+                        first = True
+                        if "!" in val:
+                            statements[x] = "WHERE \"" + self.headers[x - 1] + "\" NOT LIKE \"%" + val.strip("!") + "%\""
+                        elif ">" in val or "<" in val:
+                            statements[x] = "WHERE \"" + self.headers[x - 1] + "\" " + val
+                        else:
+                            statements[x] = "WHERE \"" + self.headers[x - 1] + "\" LIKE \"%" + val + "%\""
+                    else:
+                        if "!" in val:
+                            statements[x] = "WHERE \"" + self.headers[x - 1] + "\" NOT LIKE \"%" + val.strip("!") + "%\""
+                        elif ">" in val or "<" in val:
+                            statements[x] = " AND \"" + self.headers[x - 1] + "\" " + val
+                        else:
+                            statements[x] = " AND \"" + self.headers[x - 1] + "\" LIKE \"%" + val + "%\""
         command = ""
         for x in statements:
             if x: command += str(x)
@@ -240,13 +261,38 @@ class DbFrame(Frame):
         cur = self.conn.cursor()
         cur.execute(command)
         table = cur.fetchall()
-        for x, i in enumerate(table):  # Rows
-            temp = i[1:]
-            # print (i)
-            self.lb1.insert(x,
-                            "{0:3d} {1:39}{2:27} {3:2d} {4:17}{5:10}{6:5d} {7:7}{8:3d}{9:3d}{10:3d}{11:3d}  {12:40}{13:5d} {14:40}".format(
-                                i[0], str(i[1]), str(i[2]), i[3], str(i[4]), str(i[5]), i[6], str(i[7]), i[8], i[9],
-                                i[10], i[11], str(i[12]), i[13], str(i[14])))
+
+        if (self.var_player.get() == "Matt"):
+            for x, i in enumerate(table):  # Rows
+                extra_a = ""
+                extra_b = ""
+                extra_c = ""
+                if i[1]:
+                    if len(i[1])>37: extra_a="..."
+                if i[12]:
+                    if len(i[12])>25: extra_b="..."
+                if i[14]:
+                    if len(i[14])>25: extra_c="..."
+                # {15:2d}
+                self.lb1.insert(x,
+                                "{0:3d} {1:39}{2:27} {3:2d} {4:17}{5:10}{6:5d} {7:7}{8:3d}{9:3d}{10:3d}{11:3d}  {12:28}{13:5d} {14:28} {15:2d}".format(
+                                    i[0], str(i[1])[0:36]+extra_a, str(i[2]), i[3], str(i[4]), str(i[5]), i[6], str(i[7]), i[8], i[9],
+                                    i[10], i[11], str(i[12])[0:25]+extra_b, i[13], str(i[14])[0:25]+extra_c,i[15]))
+        else:
+            for x, i in enumerate(table):  # Rows
+                extra_a = ""
+                extra_b = ""
+                extra_c = ""
+                if i[1]:
+                    if len(i[1])>37: extra_a="..."
+                if i[12]:
+                    if len(i[12])>25: extra_b="..."
+                if i[14]:
+                    if len(i[14])>25: extra_c="..."
+                self.lb1.insert(x,
+                                "{0:3d} {1:39}{2:27} {3:2d} {4:17}{5:10}{6:5d} {7:7}{8:3d}{9:3d}{10:3d}{11:3d}  {12:28}{13:5d} {14:28}".format(
+                                    i[0], str(i[1])[0:36]+extra_a, str(i[2]), i[3], str(i[4]), str(i[5]), i[6], str(i[7]), i[8], i[9],
+                                    i[10], i[11], str(i[12])[0:25]+extra_b, i[13], str(i[14])[0:25]+extra_c))
 
 
 class Main(Tk):
@@ -469,17 +515,14 @@ class Main(Tk):
         # Button(popupWindow, text="export", command=lambda : Main.exportlb(self,self.lb2)).grid(row=1,column=1)
 
     def preview(self, char):
-        if len(char) > 100:
-            print("list")
+        if len(char) > 100: #basically are you trying to preview something in the DB view or the squad view
             name = char[3:42].rstrip(" ")
             set = char[43:70].rstrip(" ")  # interprets the line sent and takes the set out of it.
             id = "{:02d}".format(int(char[71:73].strip(" ")))
             cost = "{:02d}".format(int(char[103:106].strip(" ")))
             setshort = self.SETS[1][self.SETS[0].index(set)] + id
         else:
-            print("not a list", char)
             setshort = char.split("_")[1]
-            print(setshort)
         card = ("./cards/" + setshort + ".jpg")
         im = Image.open(card)
         imgwidth, imgheight = im.size
@@ -488,6 +531,12 @@ class Main(Tk):
         imback = ImageTk.PhotoImage(imback)
         self.preview_lbl.configure(image=imback)
         self.preview_lbl.image = imback
+
+    def squadcost(self):
+        cost = 0
+        for x in range(self.lb2.size()):
+            cost += int(self.lb2.get(x).split("_")[2])
+        self.cost_label.set("Points: " + str(cost))
 
     def sendcharacter(self, char):
         name = char[3:42].rstrip(" ")
@@ -501,14 +550,11 @@ class Main(Tk):
         self.lb2.insert(0, name + "_" + setshort + "_" + cost)
         self.lb2.bind('<<ListboxSelect>>',
                       lambda x: self.preview(self.lb2.get(self.lb2.index(self.lb2.curselection()))))  # addme
-        self.lb2.bind('<Double-1>', lambda x: self.lb2.delete(self.lb2.index(self.lb2.curselection())))
+        self.lb2.bind('<Double-1>', lambda x: [self.lb2.delete(self.lb2.index(self.lb2.curselection())),self.squadcost()])
         self.count = self.lb2.size()
         self.count_label.set("Count: " + str(self.count))
+        self.squadcost()
 
-        cost = 0
-        for x in range(self.lb2.size()):
-            cost += int(self.lb2.get(x).split("_")[2])
-        self.cost_label.set("Points: " + str(cost))
 
     def minimaker(self):
         makerWindow = Toplevel(self)
