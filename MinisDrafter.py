@@ -143,13 +143,15 @@ class DbFrame(Frame):
         setfilter = False
         filename = ""
         width, height = self.winfo_screenwidth(), self.winfo_screenheight()
-        controller.popup()
+        #controller.popup()
         monofont = font.Font(family='Courier', size=8)
         # monofont = 'TkFixedFont'
         topframe = Frame(self, width=width)
         topframe.grid(row=0, column=0)
-        bottomframe = Frame(self, width=width, height=height)
+        bottomframe = Frame(self, width=width, height=height-350) #550?
         bottomframe.grid(row=2, column=0)
+        squadframe = Frame(self, width=width, height=350)
+        squadframe.grid(row=3, column=0)
 
         controller.colheadVar = []
         controller.headers = ["name", "set", "id", "faction", "rarity", "cost", "size", "hit points", "defense", "attack",
@@ -166,7 +168,6 @@ class DbFrame(Frame):
         controller.var_player.set("None")
         for x, i in enumerate(controller.headers_labels):
             controller.colheadVar.append(StringVar(self))
-            # print (x,i)
             Label(topframe, text=i, width=len(i), font=monofont).grid(sticky="W", row=0, column=x)
             if i == "set":
                 w = OptionMenu(topframe, var_set, "Alliance and Empire", "Bounty Hunters", "Alliance and Empire",
@@ -185,7 +186,7 @@ class DbFrame(Frame):
                 Entry(topframe, width=columnwidth[x], textvariable=controller.colheadVar[x]).grid(sticky="W", row=1,
                                                                                                   column=x)
         # make drop downs for set,faction,rarity,size ... maybe abilities/force
-        controller.lb1 = Listbox(bottomframe, width=200, height=50)  # ,font=monofont)
+        controller.lb1 = Listbox(bottomframe, width=200, height=25)  # ,font=monofont)
         controller.lb1.configure(font=monofont)
         controller.lb1.grid(row=0, column=0)
         controller.lb1.bind('<<ListboxSelect>>', lambda x: controller.preview(
@@ -193,17 +194,51 @@ class DbFrame(Frame):
         controller.lb1.bind('<Double-1>', lambda x: controller.sendcharacter(
             controller.lb1.get(controller.lb1.index(controller.lb1.curselection()))))
         datarows = []
-        #columnwidth = [20, 12, 3, 10, 4, 3, 5, 3, 3, 3, 3, 20, 3, 20]
 
-        def loadplayer():
-            filename = filedialog.askopenfilename(initialdir="./players")
-            if filename is None:
-                return
-            print(filename)
-            db_menubar.entryconfig(2, label="Custom")
-            setfilter = True
-            """do something to mod the count column with the file you get"""
-            # DbFrame.refreshfilters()
+        # def loadplayer():
+        #     filename = filedialog.askopenfilename(initialdir="./players")
+        #     if filename is None:
+        #         return
+        #     db_menubar.entryconfig(2, label="Custom")
+        #     setfilter = True
+        #     """do something to mod the count column with the file you get"""
+        #     # DbFrame.refreshfilters()
+        controller.lb2 = Listbox(squadframe, width=50, height=21)
+        controller.lb2.grid(row=0, column=1, rowspan=25)
+        controller.lb2.bind('<<ListboxSelect>>',
+                      lambda x: controller.preview(controller.lb2.get(controller.lb2.index(controller.lb2.curselection()))))  # addme
+        controller.lb2.bind('<Double-1>',
+                      lambda x: [controller.lb2.delete(controller.lb2.index(controller.lb2.curselection())), controller.squadcost()])
+        controller.count_label = StringVar()
+        controller.count = 0
+        controller.count_label.set("Count: " + str(controller.count))
+        count_label = Label(squadframe, textvariable=controller.count_label)
+        count_label.grid(row=0, column=0)
+
+        controller.cost_label = StringVar()
+        controller.cost_label.set("Points: 0")
+        cost_label = Label(squadframe, textvariable=controller.cost_label)
+        cost_label.grid(row=1, column=0)
+
+        im = Image.open("./cards\\nopreview.png")
+        imgwidth, imgheight = im.size
+        im = im.resize((int(imgwidth / 3), int(imgheight / 3)), Image.ANTIALIAS)
+        imgwidth, imgheight = im.size
+        #print(im.size)
+        im = ImageTk.PhotoImage(im)
+
+        controller.preview_lbl = Label(squadframe, image=im)
+        controller.preview_lbl.image = im
+        controller.preview_lbl.grid(row=0, column=2, rowspan=25)
+
+        xp_pdf = Button(squadframe, width=10,text="Export PDF", command=lambda: Main.exportlb(self, controller.lb2))
+        xp_pdf.grid(row=2, column=0)
+        xp_list = Button(squadframe, width=10, text="Save List", command=lambda: Main.savelist(self, controller.lb2))
+        xp_list.grid(row=3, column=0)
+        compare = Button(squadframe, width=10, text="Compare", command=lambda: Main.compare_mini(self, controller.lb2))
+        compare.grid(row=4, column=0)
+        imp_list = Button(squadframe, width=10, text="Load List", command=lambda: [Main.loadlist(self,controller.lb2),controller.squadcost()])
+        imp_list.grid(row=5, column=0)
 
     def testme(self, one, two, three):
         print(one)
@@ -258,7 +293,7 @@ class DbFrame(Frame):
         command = ""
         for x in statements:
             if x: command += str(x)
-        print(command)
+        #print(command)
         cur = self.conn.cursor()
         cur.execute(command)
         table = cur.fetchall()
@@ -294,6 +329,7 @@ class DbFrame(Frame):
                                 "{0:3d} {1:39}{2:27} {3:2d} {4:17}{5:10}{6:5d} {7:7}{8:3d}{9:3d}{10:3d}{11:3d}  {12:28}{13:5d} {14:28}".format(
                                     i[0], str(i[1])[0:36]+extra_a, str(i[2]), i[3], str(i[4]), str(i[5]), i[6], str(i[7]), i[8], i[9],
                                     i[10], i[11], str(i[12])[0:25]+extra_b, i[13], str(i[14])[0:25]+extra_c))
+
 
 
 class Main(Tk):
@@ -393,6 +429,8 @@ class Main(Tk):
         packtype.set(0)
         DbFrame.refreshfilters(self)
 
+
+
     def show_frame(self, page_name):  # swaps the left frame from editor to generator controls
         frame = self.frames[page_name]
         frame.tkraise()
@@ -438,8 +476,7 @@ class Main(Tk):
             abilities += ab_tocheck
         abilities = list(dict.fromkeys(abilities))  # removes duplicates from the list
         abilities.sort()  # sorts the list alphabetically
-        #for x in abilities:
-            #print(x)
+
 
     def exportlb(self, lb):
         list = lb
@@ -462,7 +499,6 @@ class Main(Tk):
 
         """get the length of overall minis to print... then structure for loops around that."""
         # saves the temp files
-        # print(cardlist)
         pagecount = len(cardlist) // 8 + 1
         page = 0
         width = 63
@@ -485,38 +521,28 @@ class Main(Tk):
                       h=height)
         pdf.output(file.name)
 
-    def popup(self):
-        popupWindow = Toplevel(self)
-        popupWindow.attributes('-topmost', 'true')
-        popupWindow.geometry("550x350")
-        self.lb2 = Listbox(popupWindow, width=50, height=20)
-        self.lb2.grid(row=0, column=0, columnspan=3)
+    def loadlist(self,lb):
+        file=filedialog.askopenfile(initialdir="./custom",defaultextension='.sav')
+        lines = file.readlines()
+        lb.delete(0,'end')
+        for n,x in enumerate(lines):
+            x=x[:-1]
+            lb.insert(n, x)
 
-        self.count_label = StringVar()
-        self.count = 0
-        self.count_label.set("Count: " + str(self.count))
-        count_label = Label(popupWindow, textvariable=self.count_label)
-        count_label.grid(row=1, column=0)
 
-        self.cost_label = StringVar()
-        self.cost_label.set("Points: 0")
-        count_label = Label(popupWindow, textvariable=self.cost_label)
-        count_label.grid(row=1, column=1)
+    def savelist(self, lb):
+        list = lb
+        file = filedialog.asksaveasfile(initialdir="./custom", title='Name your cardlist',
+                                        defaultextension='.sav')
+        if file is None:  # asksaveasfile return `None` if dialog closed with "cancel".
+            return
+        filename = str(file.name.split("/")[-1:]).split(".")[0][2:]
 
-        im = Image.open("./cards\\nopreview.png")
-        imgwidth, imgheight = im.size
-        im = im.resize((int(imgwidth / 3), int(imgheight / 3)), Image.ANTIALIAS)
-        imgwidth, imgheight = im.size
-        print(im.size)
-        im = ImageTk.PhotoImage(im)
+        for x in range(list.size()):
+            file.write(list.get(x)[1:])
+            file.write("\n")
+        file.close()
 
-        self.preview_lbl = Label(popupWindow, image=im)
-        self.preview_lbl.image = im
-        self.preview_lbl.grid(row=0, column=4, rowspan=2)
-
-        evoke = Button(popupWindow, text="Export Minis", command=lambda: Main.exportlb(self, self.lb2))
-        evoke.grid(row=1, column=2)
-        # Button(popupWindow, text="export", command=lambda : Main.exportlb(self,self.lb2)).grid(row=1,column=1)
 
     def preview(self, char):
         if len(char) > 100: #basically are you trying to preview something in the DB view or the squad view
@@ -540,6 +566,7 @@ class Main(Tk):
         cost = 0
         for x in range(self.lb2.size()):
             cost += int(self.lb2.get(x).split("_")[2])
+        self.count_label.set("Count: "+str(self.lb2.size()))
         self.cost_label.set("Points: " + str(cost))
 
     def sendcharacter(self, char):
@@ -550,11 +577,7 @@ class Main(Tk):
         setshort = self.SETS[1][self.SETS[0].index(
             set)] + id  # references the setlist for the shortname of the set the mini is from and rounds the id to two digits.
 
-        # print (name+"_"+setshort+"_"+cost)
         self.lb2.insert(0, name + "_" + setshort + "_" + cost)
-        self.lb2.bind('<<ListboxSelect>>',
-                      lambda x: self.preview(self.lb2.get(self.lb2.index(self.lb2.curselection()))))  # addme
-        self.lb2.bind('<Double-1>', lambda x: [self.lb2.delete(self.lb2.index(self.lb2.curselection())),self.squadcost()])
         self.count = self.lb2.size()
         self.count_label.set("Count: " + str(self.count))
         self.squadcost()
@@ -585,7 +608,6 @@ class Main(Tk):
         file = open("./minimaker/abilitylist.tsv", encoding="utf8")
         filelist = file.readlines()
         for i in filelist:
-            print(i)
             self.abilitiesfull.append(i.split("\t"))
 
         self.forcepowers = []
@@ -593,7 +615,6 @@ class Main(Tk):
         file = open("./minimaker/forcepowers.csv")
         filelist = file.readlines()
         for i in filelist:
-            #print(i)
             self.forcepowersfull.append(i)
         file.close()
 
@@ -689,7 +710,6 @@ class Main(Tk):
 
         def factionchanged(ignorea, ignoreb, ignorec):
             self.cardchanged = True
-            print("faction changed")
             refreshcost()
 
         def modstat(stat, dir):
@@ -717,13 +737,11 @@ class Main(Tk):
             cost_atk = ranks_atk ** 2 / 2
             cost_dmg = ranks_dmg ** 2
             cost_dmgtax = dmgtax * (ranks_hp + ranks_def + ranks_atk + ranks_dmg)
-            print(cost_dmgtax)
 
             minicost = round(cost_hp + cost_def + cost_atk + cost_dmg + cost_dmgtax + force + 5)
             if self.cardchanged:
                 card = ("./minimaker/templates/01_" + str(self.faction.get()) + "_template.png")
                 self.cardchange = False
-            print(card)
             im = Image.open(card)
             imgwidth, imgheight = im.size
             imback = im.crop((imgwidth / 2, 0, imgwidth, imgheight))
