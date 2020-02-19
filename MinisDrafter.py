@@ -275,7 +275,7 @@ class DbFrame(Frame):
                     statements[x] = "WHERE \"" + self.headers[x - 1]+ "\" "
 
                 else:
-                    statements[x] = "AND \"" + self.headers[x - 1] + "\" "
+                    statements[x] = " AND \"" + self.headers[x - 1] + "\" "
                 for z in range(val.count(",")):
                     current_val = val.split(",")[z+1]
                     if "!" in current_val: no = "NOT "
@@ -290,10 +290,12 @@ class DbFrame(Frame):
 
                 val = val.split(",")[0]
                 val = val.split("&")[0]
-
-                print(val)
-                if ">" in val or "<" in val: statements[x] += val
-                else:
+                tmp = "= "
+                try:
+                    test = int(val.strip("><"))
+                    if "<" in val or ">" in val: tmp = ""
+                    statements[x] += tmp + val
+                except:
                     if "!" in val: no="NOT "
                     else: no=""
                     statements[x] += no + "LIKE \"%" + val.strip("!") + "%\""
@@ -306,7 +308,7 @@ class DbFrame(Frame):
         cur.execute(command)
         table = cur.fetchall()
 
-        if (self.var_player.get() == "Matt"):
+        if not (player == "None"):
             for x, i in enumerate(table):  # Rows
                 extra_a = ""
                 extra_b = ""
