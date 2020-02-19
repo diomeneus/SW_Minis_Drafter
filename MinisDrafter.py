@@ -179,7 +179,7 @@ class DbFrame(Frame):
                 w.grid(sticky="W", row=1, column=x)
                 var_set.trace_variable("w", lambda x, y, z: self.testme(x, y, z))  # DbFrame.refreshfilters(self))
             elif i == "qty":
-                p = OptionMenu(topframe, controller.var_player, "None", "Matt")
+                p = OptionMenu(topframe, controller.var_player, "None", "matts")
                 p.config(width=len(i))#columnwidth[x])
                 p.grid(sticky="W", row=1, column=x)
             else:
@@ -189,8 +189,8 @@ class DbFrame(Frame):
         controller.lb1 = Listbox(bottomframe, width=200, height=25)  # ,font=monofont)
         controller.lb1.configure(font=monofont)
         controller.lb1.grid(row=0, column=0)
-        controller.lb1.bind('<<ListboxSelect>>', lambda x: controller.preview(
-            controller.lb1.get(controller.lb1.index(controller.lb1.curselection()))))  # addme
+        controller.lb1.bind('<<ListboxSelect>>', lambda x: controller.preview(controller.lb1))
+            #controller.lb1.get(controller.lb1.index(controller.lb1.curselection()))))  # addme
         controller.lb1.bind('<Double-1>', lambda x: controller.sendcharacter(
             controller.lb1.get(controller.lb1.index(controller.lb1.curselection()))))
         datarows = []
@@ -206,7 +206,7 @@ class DbFrame(Frame):
         controller.lb2 = Listbox(squadframe, width=50, height=21)
         controller.lb2.grid(row=0, column=1, rowspan=25)
         controller.lb2.bind('<<ListboxSelect>>',
-                      lambda x: controller.preview(controller.lb2.get(controller.lb2.index(controller.lb2.curselection()))))  # addme
+                      lambda x: controller.preview(controller.lb2))#.get(controller.lb2.index(controller.lb2.curselection()))))  # addme
         controller.lb2.bind('<Double-1>',
                       lambda x: [controller.lb2.delete(controller.lb2.index(controller.lb2.curselection())), controller.squadcost()])
         controller.count_label = StringVar()
@@ -225,17 +225,21 @@ class DbFrame(Frame):
         im = im.resize((int(imgwidth / 3), int(imgheight / 3)), Image.ANTIALIAS)
         imgwidth, imgheight = im.size
         #print(im.size)
+        #im2 = ImageTk.PhotoImage(im)
         im = ImageTk.PhotoImage(im)
 
         controller.preview_lbl = Label(squadframe, image=im)
         controller.preview_lbl.image = im
         controller.preview_lbl.grid(row=0, column=2, rowspan=25)
+        controller.compare_lbl = Label(squadframe, image=im)
+        controller.compare_lbl.image = im
+        controller.compare_lbl.grid(row=0, column=3, rowspan=25)
 
         xp_pdf = Button(squadframe, width=10,text="Export PDF", command=lambda: Main.exportlb(self, controller.lb2))
         xp_pdf.grid(row=2, column=0)
         xp_list = Button(squadframe, width=10, text="Save List", command=lambda: Main.savelist(self, controller.lb2))
         xp_list.grid(row=3, column=0)
-        compare = Button(squadframe, width=10, text="Compare", command=lambda: Main.compare_mini(self, controller.lb2))
+        compare = Button(squadframe, width=10, text="Compare", command=lambda: Main.compare_mini(controller,controller.lb2,controller.lb1))
         compare.grid(row=4, column=0)
         imp_list = Button(squadframe, width=10, text="Load List", command=lambda: [Main.loadlist(self,controller.lb2),controller.squadcost()])
         imp_list.grid(row=5, column=0)
@@ -246,54 +250,58 @@ class DbFrame(Frame):
         print(three)
 
     def refreshfilters(self):
+        player = self.var_player.get()
         self.lb1.delete(0, 1000)
         statements = [False] * 16
-        first = False
-        if (self.var_player.get()=="Matt"):
+        first = True
+        statements[0] = "SELECT * FROM minis_list "
+        if not (player == "None"):
             statements[0] = """SELECT uniq_id,name,"set",id,faction,rarity,cost,size,"hit points",defense,attack,damage,"special abilities","force points","force powers",
             CASE 
-                WHEN minis_owned_matts.count IS NULL THEN 0+minis_owned_matts."extra minis" WHEN minis_owned_matts."extra minis" IS NULL THEN 0+minis_owned_matts.count
-                WHEN minis_owned_matts."extra minis" IS NULL THEN 0+minis_owned_matts.count
-                ELSE minis_owned_matts."extra minis"+minis_owned_matts.count
+                WHEN minis_owned_"""+player+""".count IS NULL THEN 0+minis_owned_"""+player+"""."extra minis" WHEN minis_owned_"""+player+"""."extra minis" IS NULL THEN 0+minis_owned_"""+player+""".count
+                WHEN minis_owned_"""+player+"""."extra minis" IS NULL THEN 0+minis_owned_"""+player+""".count
+                ELSE minis_owned_"""+player+"""."extra minis"+minis_owned_"""+player+""".count
             END AS "qty" 
             FROM minis_list 
-            Inner Join minis_owned_matts on minis_list.uniq_id = minis_owned_matts."mini id"
-            WHERE "qty" > 0"""
-            for x, i in enumerate(self.colheadVar, 1):
-                val = i.get()
-                filtered = ""
-                if val:
-                    if ">" in val or "<" in val:
-                        statements[x] = " AND \"" + self.headers[x - 1] + "\" " + val
-                    else:
-                        statements[x] = " AND \"" + self.headers[x - 1] + "\" LIKE \"%" + val + "%\""
+            Inner Join minis_owned_"""+player+""" on minis_list.uniq_id = minis_owned_"""+player+"""."mini id"
+            WHERE "qty" > 0 """
+            first = False
+        for x, i in enumerate(self.colheadVar, 1):
+            val = i.get()
+            filtered = ""
+            if val:
+                if first:
+                    first = False
+                    statements[x] = "WHERE \"" + self.headers[x - 1]+ "\" "
 
-        if (self.var_player.get()=="None"):
-            statements[0] = "SELECT * FROM minis_list "
-            for x, i in enumerate(self.colheadVar, 1):
-                val = i.get()
-                filtered = ""
-                if val:
-                    if not first:
-                        first = True
-                        if "!" in val:
-                            statements[x] = "WHERE \"" + self.headers[x - 1] + "\" NOT LIKE \"%" + val.strip("!") + "%\""
-                        elif ">" in val or "<" in val:
-                            statements[x] = "WHERE \"" + self.headers[x - 1] + "\" " + val
-                        else:
-                            statements[x] = "WHERE \"" + self.headers[x - 1] + "\" LIKE \"%" + val + "%\""
-                    else:
-                        if "!" in val:
-                            statements[x] = "WHERE \"" + self.headers[x - 1] + "\" NOT LIKE \"%" + val.strip("!") + "%\""
-                        elif ">" in val or "<" in val:
-                            statements[x] = " AND \"" + self.headers[x - 1] + "\" " + val
-                        else:
-                            statements[x] = " AND \"" + self.headers[x - 1] + "\" LIKE \"%" + val + "%\""
+                else:
+                    statements[x] = "AND \"" + self.headers[x - 1] + "\" "
+                for z in range(val.count(",")):
+                    current_val = val.split(",")[z+1]
+                    if "!" in current_val: no = "NOT "
+                    else: no = ""
+
+                    statements[x] += no + "LIKE \"%" + current_val.strip("!") + "%\" OR \"" + self.headers[x - 1]+ "\" "
+                for z in range(val.count("&")):
+                    current_val = val.split("&")[z + 1]
+                    if "!" in current_val: no = "NOT "
+                    else: no = ""
+                    statements[x] += no + "LIKE \"%" + current_val.strip("!") + "%\" AND \"" + self.headers[x - 1] + "\" "
+
+                val = val.split(",")[0]
+                val = val.split("&")[0]
+
+                print(val)
+                if ">" in val or "<" in val: statements[x] += val
+                else:
+                    if "!" in val: no="NOT "
+                    else: no=""
+                    statements[x] += no + "LIKE \"%" + val.strip("!") + "%\""
         statements.append(" ORDER BY minis_list.\"set\" ASC, minis_list.id ASC")
         command = ""
         for x in statements:
             if x: command += str(x)
-        #print(command)
+        print(command)
         cur = self.conn.cursor()
         cur.execute(command)
         table = cur.fetchall()
@@ -544,12 +552,36 @@ class Main(Tk):
         file.close()
 
 
-    def preview(self, char):
+    def preview(self, list):
+        try:
+            char = list.get(list.index(list.curselection()))
+        except:
+            print("changed lists")
+        else:
+            if len(char) > 100: #basically are you trying to preview something in the DB view or the squad view
+                set = char[43:70].rstrip(" ")  # interprets the line sent and takes the set out of it.
+                id = "{:02d}".format(int(char[71:73].strip(" ")))
+                setshort = self.SETS[1][self.SETS[0].index(set)] + id
+            else:
+                setshort = char.split("_")[1]
+            card = ("./cards/" + setshort + ".jpg")
+            im = Image.open(card)
+            imgwidth, imgheight = im.size
+            imback = im.crop((imgwidth / 2, 0, imgwidth, imgheight))
+            imback = imback.resize((int(imgwidth / 6), int(imgheight / 3)), Image.ANTIALIAS)
+            imback = ImageTk.PhotoImage(imback)
+            self.preview_lbl.configure(image=imback)
+            self.preview_lbl.image = imback
+
+    def compare_mini (self, list,list2):
+        try:
+            char = list.get(list.index(list.curselection()))
+        except:
+            print("trying other list")
+            char = list2.get(list2.index(list2.curselection()))
         if len(char) > 100: #basically are you trying to preview something in the DB view or the squad view
-            name = char[3:42].rstrip(" ")
             set = char[43:70].rstrip(" ")  # interprets the line sent and takes the set out of it.
             id = "{:02d}".format(int(char[71:73].strip(" ")))
-            cost = "{:02d}".format(int(char[103:106].strip(" ")))
             setshort = self.SETS[1][self.SETS[0].index(set)] + id
         else:
             setshort = char.split("_")[1]
@@ -559,8 +591,8 @@ class Main(Tk):
         imback = im.crop((imgwidth / 2, 0, imgwidth, imgheight))
         imback = imback.resize((int(imgwidth / 6), int(imgheight / 3)), Image.ANTIALIAS)
         imback = ImageTk.PhotoImage(imback)
-        self.preview_lbl.configure(image=imback)
-        self.preview_lbl.image = imback
+        self.compare_lbl.configure(image=imback)
+        self.compare.image = imback
 
     def squadcost(self):
         cost = 0
