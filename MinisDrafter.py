@@ -244,6 +244,13 @@ class DbFrame(Frame):
         imp_list = Button(squadframe, width=10, text="Load List", command=lambda: [Main.loadlist(self,controller.lb2),controller.squadcost()])
         imp_list.grid(row=5, column=0)
 
+        controller.lb3 = Listbox(squadframe, width=50, height=20)
+        controller.lb3.configure(font=monofont)
+        controller.lb3.grid(row=0, column=4, rowspan=21)
+        glossary = StringVar()
+        controller.glossary_filter = Entry(squadframe,width=50,textvariable=glossary)
+        controller.glossary_filter.grid(row=23,column=4)
+
     def testme(self, one, two, three):
         print(one)
         print(two)
