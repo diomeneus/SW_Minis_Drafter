@@ -143,44 +143,74 @@ class DbFrame(Frame):
         setfilter = False
         filename = ""
         width, height = self.winfo_screenwidth(), self.winfo_screenheight()
-        #controller.popup()
+        # controller.popup()
         monofont = font.Font(family='Courier', size=8)
         # monofont = 'TkFixedFont'
         topframe = Frame(self, width=width)
         topframe.grid(row=0, column=0)
-        bottomframe = Frame(self, width=width, height=height-350) #550?
+        bottomframe = Frame(self, width=width, height=height - 350)  # 550?
         bottomframe.grid(row=2, column=0)
         squadframe = Frame(self, width=width, height=350)
         squadframe.grid(row=3, column=0)
 
         controller.colheadVar = []
-        controller.headers = ["name", "set", "id", "faction", "rarity", "cost", "size", "hit points", "defense", "attack",
+        controller.headers = ["name", "set", "id", "faction", "rarity", "cost", "size", "hit points", "defense",
+                              "attack",
                               "damage", "special abilities", "force points", "force powers", "qty"]
         controller.headers_labels = ["name", "set", "id", "faction", "rarity", "cost", "size", "hp", "df",
-                              "at",
-                              "dm", "special abilities", "fp", "force powers", "qty"]
+                                     "at",
+                                     "dm", "special abilities", "fp", "force powers", "qty"]
         +3
         columnwidth = [49, 24, 4, 19, 12, 5, 9, 3, 3, 3, 3, 37, 3, 33, 5]
-        #columnwidth = [30, 15, 4, 19, 14, 6, 9, 10, 10, 3, 3, 36, 3, 38, 5]
+        # columnwidth = [30, 15, 4, 19, 14, 6, 9, 10, 10, 3, 3, 36, 3, 38, 5]
 
         var_set = StringVar()
-        controller.var_player= StringVar()
+        controller.var_player = StringVar()
         controller.var_player.set("None")
+        controller.var_sort = StringVar()
+        controller.var_sort.set("Name")
+        controller.colheadbutton=[]
+
+        #LAAAAAAAAAAAAAAAZYYYYYYYYYYYYYYYYY
+        offset=-2
+        Button(topframe, text="name", width=30, font=monofont, command=lambda: self.sortby("name", controller)).grid(sticky="W", row=0, column=0)
+        Button(topframe, text="set", width=columnwidth[1]+offset, font=monofont, command=lambda: self.sortby("set", controller)).grid(sticky="W", row=0, column=1)
+        Button(topframe, text="id", width=columnwidth[2]+offset, font=monofont, command=lambda: self.sortby("id", controller)).grid(sticky="W", row=0, column=2)
+        Button(topframe, text="faction", width=columnwidth[3]+offset-10, font=monofont, command=lambda: self.sortby("faction", controller)).grid(sticky="W", row=0, column=3)
+        Button(topframe, text="rarity", width=columnwidth[4]+offset, font=monofont, command=lambda: self.sortby("rarity", controller)).grid(sticky="W", row=0, column=4)
+
+        Button(topframe, text="cost", width=columnwidth[5]+offset, font=monofont, command=lambda: self.sortby("cost", controller)).grid(sticky="W", row=0, column=5)
+        Button(topframe, text="size", width=columnwidth[6]+offset, font=monofont, command=lambda: self.sortby("size", controller)).grid(sticky="W", row=0, column=6)
+        Button(topframe, text="hp", width=columnwidth[7]+offset, font=monofont, command=lambda: self.sortby("hit points", controller)).grid(sticky="W", row=0, column=7)
+        Button(topframe, text="df", width=columnwidth[8]+offset, font=monofont, command=lambda: self.sortby("defense", controller)).grid(sticky="W", row=0, column=8)
+        Button(topframe, text="at", width=columnwidth[9]+offset, font=monofont, command=lambda: self.sortby("attack", controller)).grid(sticky="W", row=0, column=9)
+        Button(topframe, text="dmg", width=columnwidth[10]+offset, font=monofont, command=lambda: self.sortby("damage", controller)).grid(sticky="W", row=0, column=10)
+
+
+        Button(topframe, text="special abilities", width=columnwidth[11]+offset-10, font=monofont, command=lambda: self.sortby("special abilities", controller)).grid(sticky="W", row=0, column=11)
+        Button(topframe, text="FP", width=columnwidth[12]+offset, font=monofont, command=lambda: self.sortby("force points", controller)).grid(sticky="W", row=0, column=12)
+        Button(topframe, text="Force Powers", width=columnwidth[13]+offset-10, font=monofont, command=lambda: self.sortby("force powers", controller)).grid(sticky="W", row=0, column=13)
+        Button(topframe, text="Qty", width=columnwidth[14]+offset, font=monofont, command=lambda: self.sortby("qty", controller)).grid(sticky="W", row=0, column=14)
+
         for x, i in enumerate(controller.headers_labels):
             controller.colheadVar.append(StringVar(self))
-            Label(topframe, text=i, width=len(i), font=monofont).grid(sticky="W", row=0, column=x)
+
+            #Button(topframe, text=i, width=len(i), font=monofont,command=lambda: self.sortby(self,controller)).grid(sticky="W", row=0, column=x)
+
+            # Label(topframe, text=i, width=len(i), font=monofont).grid(sticky="W", row=0, column=x)
             if i == "set":
                 w = OptionMenu(topframe, var_set, "Alliance and Empire", "Bounty Hunters", "Alliance and Empire",
                                "Champions of the Force", "Clone Strike", "The Clone Wars",
                                "The Force Unleashed", "Galaxy at War", "Imperial Entanglements", "Jedi Academy",
                                "Knights of the Old Republic", "Legacy of the Force",
-                               "Masters of the Force", "Revenge of the Sith", "Rebel Storm", "Dark Times", "Universe","Clone Wars Starter")
+                               "Masters of the Force", "Revenge of the Sith", "Rebel Storm", "Dark Times", "Universe",
+                               "Clone Wars Starter","Affinity")
                 w.config(width=columnwidth[x])
                 w.grid(sticky="W", row=1, column=x)
                 var_set.trace_variable("w", lambda x, y, z: self.testme(x, y, z))  # DbFrame.refreshfilters(self))
             elif i == "qty":
                 p = OptionMenu(topframe, controller.var_player, "None", "matts")
-                p.config(width=len(i))#columnwidth[x])
+                p.config(width=len(i))  # columnwidth[x])
                 p.grid(sticky="W", row=1, column=x)
             else:
                 Entry(topframe, width=columnwidth[x], textvariable=controller.colheadVar[x]).grid(sticky="W", row=1,
@@ -190,7 +220,7 @@ class DbFrame(Frame):
         controller.lb1.configure(font=monofont)
         controller.lb1.grid(row=0, column=0)
         controller.lb1.bind('<<ListboxSelect>>', lambda x: controller.preview(controller.lb1))
-            #controller.lb1.get(controller.lb1.index(controller.lb1.curselection()))))  # addme
+        # controller.lb1.get(controller.lb1.index(controller.lb1.curselection()))))  # addme
         controller.lb1.bind('<Double-1>', lambda x: controller.sendcharacter(
             controller.lb1.get(controller.lb1.index(controller.lb1.curselection()))))
         datarows = []
@@ -206,9 +236,11 @@ class DbFrame(Frame):
         controller.lb2 = Listbox(squadframe, width=50, height=21)
         controller.lb2.grid(row=0, column=1, rowspan=25)
         controller.lb2.bind('<<ListboxSelect>>',
-                      lambda x: controller.preview(controller.lb2))#.get(controller.lb2.index(controller.lb2.curselection()))))  # addme
+                            lambda x: controller.preview(
+                                controller.lb2))  # .get(controller.lb2.index(controller.lb2.curselection()))))  # addme
         controller.lb2.bind('<Double-1>',
-                      lambda x: [controller.lb2.delete(controller.lb2.index(controller.lb2.curselection())), controller.squadcost()])
+                            lambda x: [controller.lb2.delete(controller.lb2.index(controller.lb2.curselection())),
+                                       controller.squadcost()])
         controller.count_label = StringVar()
         controller.count = 0
         controller.count_label.set("Count: " + str(controller.count))
@@ -224,8 +256,8 @@ class DbFrame(Frame):
         imgwidth, imgheight = im.size
         im = im.resize((int(imgwidth / 3), int(imgheight / 3)), Image.ANTIALIAS)
         imgwidth, imgheight = im.size
-        #print(im.size)
-        #im2 = ImageTk.PhotoImage(im)
+        # print(im.size)
+        # im2 = ImageTk.PhotoImage(im)
         im = ImageTk.PhotoImage(im)
 
         controller.preview_lbl = Label(squadframe, image=im)
@@ -235,26 +267,62 @@ class DbFrame(Frame):
         controller.compare_lbl.image = im
         controller.compare_lbl.grid(row=0, column=3, rowspan=25)
 
-        xp_pdf = Button(squadframe, width=10,text="Export PDF", command=lambda: Main.exportlb(self, controller.lb2))
+        xp_pdf = Button(squadframe, width=10, text="Export PDF", command=lambda: Main.exportlb(self, controller.lb2))
         xp_pdf.grid(row=2, column=0)
         xp_list = Button(squadframe, width=10, text="Save List", command=lambda: Main.savelist(self, controller.lb2))
         xp_list.grid(row=3, column=0)
-        compare = Button(squadframe, width=10, text="Compare", command=lambda: Main.compare_mini(controller,controller.lb2,controller.lb1))
+        compare = Button(squadframe, width=10, text="Compare",
+                         command=lambda: Main.compare_mini(controller, controller.lb2, controller.lb1))
         compare.grid(row=4, column=0)
-        imp_list = Button(squadframe, width=10, text="Load List", command=lambda: [Main.loadlist(self,controller.lb2),controller.squadcost()])
+        imp_list = Button(squadframe, width=10, text="Load List",
+                          command=lambda: [Main.loadlist(self, controller.lb2), controller.squadcost()])
         imp_list.grid(row=5, column=0)
 
-        controller.lb3 = Listbox(squadframe, width=50, height=20)
+        controller.lb3 = Listbox(squadframe, width=20, height=20)
         controller.lb3.configure(font=monofont)
         controller.lb3.grid(row=0, column=4, rowspan=21)
+        controller.lb3.bind('<<ListboxSelect>>', lambda x: DbFrame.showgloss(controller))
+
+        controller.lb3selected = Text(squadframe, width=30, height=20)
+        controller.lb3selected.config(wrap=WORD)
+        controller.lb3selected.grid(row=0,column=5,rowspan=21)
+
+
         glossary = StringVar()
-        controller.glossary_filter = Entry(squadframe,width=50,textvariable=glossary)
-        controller.glossary_filter.grid(row=23,column=4)
+        controller.glossary_filter = Entry(squadframe, width=50, textvariable=glossary)
+        controller.glossary_filter.grid(row=23, column=4)
+        controller.glossary_button = Button(squadframe,text="Go",command=lambda : DbFrame.refreshgloss(controller))
+        controller.glossary_button.grid(row=23,column=5)
+
+    def sortby(self, u,t):
+        print (u,t)
+        t.var_sort.set(u)
+        print (t.var_sort.get())
+        self.refreshfilters()
 
     def testme(self, one, two, three):
         print(one)
         print(two)
         print(three)
+
+    def refreshgloss(self):
+        self.lb3.delete(0, 1000)
+        term = self.glossary_filter.get().lower()
+        print ("looking for",term)
+        for x, i in enumerate(self.glossary):
+            #print(x, i)
+            if not term == "":
+                if term in i[0].lower() or term in i[1].lower():
+                    self.lb3.insert(x,str(i[0]+ "              " + str(i[1])))
+            else: self.lb3.insert(x, str(i[0] + "              " + str(i[1])))
+
+    def showgloss(self):
+        self.lb3selected.delete(1.0, END)
+        stupidvar = self.lb3.get(self.lb3.index(self.lb3.curselection()))
+        stupidvar = stupidvar.split("              ")[1]
+        print (stupidvar)
+        self.lb3selected.insert(INSERT, stupidvar)
+        #self.lb3selected.insert(str(stupidvar))
 
     def refreshfilters(self):
         player = self.var_player.get()
@@ -306,7 +374,8 @@ class DbFrame(Frame):
                     if "!" in val: no="NOT "
                     else: no=""
                     statements[x] += no + "LIKE \"%" + val.strip("!") + "%\""
-        statements.append(" ORDER BY minis_list.\"set\" ASC, minis_list.id ASC")
+        sortorder = self.var_sort.get().lower()
+        statements.append(" ORDER BY minis_list.\""+sortorder+"\" ASC, minis_list.id ASC")
         command = ""
         for x in statements:
             if x: command += str(x)
@@ -352,13 +421,14 @@ class DbFrame(Frame):
 class Main(Tk):
     def __init__(self):
         Tk.__init__(self)
-        self.title("SW Minis Drafter")
+        self.title("SW Minis Drafter - v1.4")
         w, h = self.winfo_screenwidth(), self.winfo_screenheight()
-        self.overrideredirect(1)
+        #self.overrideredirect(1)
         self.geometry("%dx%d+0+0" % (w, h - 50))
         self.focus_set()  # <-- move focus to this widget
         self.bind("<Escape>", lambda e: e.widget.quit())
         self.bind('<Return>', lambda x: DbFrame.refreshfilters(self))
+        #print (self.winfo_toplevel())
 
         database = "./DB/SWminis.db"
         self.conn = self.create_connection(database)
@@ -385,26 +455,28 @@ class Main(Tk):
                      "Clone Strike", "The Clone Wars",
                      "The Force Unleashed", "Galaxy at War", "Imperial Entanglements", "Jedi Academy",
                      "Knights of the Old Republic", "Legacy of the Force",
-                     "Masters of the Force", "Revenge of the Sith", "Rebel Storm", "Dark Times", "Universe","Clone Wars Starter","Clone Wars Scenario","Battle of Hoth"], ["ae",
-                                                                                                               "bh",
-                                                                                                               "ae",
-                                                                                                               "cotf",
-                                                                                                               "cs",
-                                                                                                               "cw",
-                                                                                                               "fu",
-                                                                                                               "gaw",
-                                                                                                               "ie",
-                                                                                                               "ja",
-                                                                                                               "kotor",
-                                                                                                               "lotf",
-                                                                                                               "motf",
-                                                                                                               "rots",
-                                                                                                               "rs",
-                                                                                                               "tdt",
-                                                                                                               "uh",
-                                                                                                               "cwsp",
-                                                                                                               "cwmp",
-                                                                                                               "boh"]
+                     "Masters of the Force", "Revenge of the Sith", "Rebel Storm", "Dark Times", "Universe",
+                     "Clone Wars Starter", "Clone Wars Scenario", "Battle of Hoth","Affinity"], ["ae",
+                                                                                      "bh",
+                                                                                      "ae",
+                                                                                      "cotf",
+                                                                                      "cs",
+                                                                                      "cw",
+                                                                                      "fu",
+                                                                                      "gaw",
+                                                                                      "ie",
+                                                                                      "ja",
+                                                                                      "kotor",
+                                                                                      "lotf",
+                                                                                      "motf",
+                                                                                      "rots",
+                                                                                      "rs",
+                                                                                      "tdt",
+                                                                                      "uh",
+                                                                                      "cwsp",
+                                                                                      "cwmp",
+                                                                                      "boh",
+                                                                                      "affinity"]
         self.FACTIONS = ["Rebel", "Imperial", "The Old Republic", "The New Republic", "Sith", "Republic", "Seperatist",
                          "Yuuzhan Vong", "Mandolorian", "Fringe"]
 
@@ -446,7 +518,17 @@ class Main(Tk):
         packtype.set(0)
         DbFrame.refreshfilters(self)
 
-
+        # Setup the glossary window
+        self.glossary = []
+        for x in ["specialabilities", "forcepowers", "commandereffects"]:
+            file = open("./DB/" + x + ".tsv", encoding="utf8")
+            filelist = file.readlines()
+            for i in filelist:
+                # append a list, the entry name, then its description. when actually searching the glossary search both
+                self.glossary.append(i.split("\t"))
+            file.close()
+        print(self.glossary)
+        DbFrame.refreshgloss(self)
 
     def show_frame(self, page_name):  # swaps the left frame from editor to generator controls
         frame = self.frames[page_name]
@@ -494,7 +576,6 @@ class Main(Tk):
         abilities = list(dict.fromkeys(abilities))  # removes duplicates from the list
         abilities.sort()  # sorts the list alphabetically
 
-
     def exportlb(self, lb):
         list = lb
         cost = 0
@@ -538,14 +619,13 @@ class Main(Tk):
                       h=height)
         pdf.output(file.name)
 
-    def loadlist(self,lb):
-        file=filedialog.askopenfile(initialdir="./custom",defaultextension='.sav')
+    def loadlist(self, lb):
+        file = filedialog.askopenfile(initialdir="./custom", defaultextension='.sav')
         lines = file.readlines()
-        lb.delete(0,'end')
-        for n,x in enumerate(lines):
-            x=x[:-1]
+        lb.delete(0, 'end')
+        for n, x in enumerate(lines):
+            x = x[:-1]
             lb.insert(n, x)
-
 
     def savelist(self, lb):
         list = lb
@@ -560,14 +640,13 @@ class Main(Tk):
             file.write("\n")
         file.close()
 
-
     def preview(self, list):
         try:
             char = list.get(list.index(list.curselection()))
         except:
             print("changed lists")
         else:
-            if len(char) > 100: #basically are you trying to preview something in the DB view or the squad view
+            if len(char) > 100:  # basically are you trying to preview something in the DB view or the squad view
                 set = char[43:70].rstrip(" ")  # interprets the line sent and takes the set out of it.
                 id = "{:02d}".format(int(char[71:73].strip(" ")))
                 setshort = self.SETS[1][self.SETS[0].index(set)] + id
@@ -582,13 +661,13 @@ class Main(Tk):
             self.preview_lbl.configure(image=imback)
             self.preview_lbl.image = imback
 
-    def compare_mini (self, list,list2):
+    def compare_mini(self, list, list2):
         try:
             char = list.get(list.index(list.curselection()))
         except:
             print("trying other list")
             char = list2.get(list2.index(list2.curselection()))
-        if len(char) > 100: #basically are you trying to preview something in the DB view or the squad view
+        if len(char) > 100:  # basically are you trying to preview something in the DB view or the squad view
             set = char[43:70].rstrip(" ")  # interprets the line sent and takes the set out of it.
             id = "{:02d}".format(int(char[71:73].strip(" ")))
             setshort = self.SETS[1][self.SETS[0].index(set)] + id
@@ -607,7 +686,7 @@ class Main(Tk):
         cost = 0
         for x in range(self.lb2.size()):
             cost += int(self.lb2.get(x).split("_")[2])
-        self.count_label.set("Count: "+str(self.lb2.size()))
+        self.count_label.set("Count: " + str(self.lb2.size()))
         self.cost_label.set("Points: " + str(cost))
 
     def sendcharacter(self, char):
@@ -623,12 +702,12 @@ class Main(Tk):
         self.count_label.set("Count: " + str(self.count))
         self.squadcost()
 
-
     def minimaker(self):
         makerWindow = Toplevel(self)
         makerWindow.attributes('-topmost', 'true')
-        makerWindow.geometry("700x525")
-        card = ("./minimaker/templates/01_fringe_template.png")
+        makerWindow.geometry("750x525")
+        card = ("./minimaker/templates/02_fringe.png")
+        self.portrait = ("./minimaker/blank.png")
         self.cardchanged = True
 
         self.hitpoints = IntVar()
@@ -643,6 +722,8 @@ class Main(Tk):
         self.unique.set(0)
         self.melee = StringVar()
         self.melee.set("0")
+        self.attacks = StringVar()
+        self.attacks.set("")
 
         self.abilities = []
         self.abilitiesfull = []
@@ -653,10 +734,10 @@ class Main(Tk):
 
         self.forcepowers = []
         self.forcepowersfull = []
-        file = open("./minimaker/forcepowers.csv")
+        file = open("./minimaker/forcepowers.tsv", encoding="utf8")
         filelist = file.readlines()
         for i in filelist:
-            self.forcepowersfull.append(i)
+            self.forcepowersfull.append(i.split("\t"))
         file.close()
 
         self.force = IntVar()
@@ -673,8 +754,12 @@ class Main(Tk):
         name = StringVar(value='unnamed')
         namefld = Entry(makerWindow, width=20, textvariable=name).grid(row=0, column=3)
 
+        Label(makerWindow, text="Cost: ").grid(row=0, column=4)
+        cost = StringVar(value='')
+        namefld = Entry(makerWindow, width=5, textvariable=cost).grid(row=0, column=5)
+
         statframe = LabelFrame(makerWindow, text="Stats")
-        statframe.grid(row=1, column=2, rowspan=4, columnspan=2)
+        statframe.grid(row=1, column=2, rowspan=5, columnspan=2)
         Label(statframe, text="HP").grid(row=0, column=0)
         Button(statframe, text="↑", width=2, command=lambda: modstat(self.hitpoints, 10)).grid(row=0, column=1)
         Button(statframe, text="↓", width=2, command=lambda: modstat(self.hitpoints, -10)).grid(row=0, column=2)
@@ -695,30 +780,42 @@ class Main(Tk):
         Button(statframe, text="↑", width=2, command=lambda: modstat(self.force, 1)).grid(row=4, column=1)
         Button(statframe, text="↓", width=2, command=lambda: modstat(self.force, -1)).grid(row=4, column=2)
 
-        Checkbutton(makerWindow, text="Unique", variable=self.unique, onvalue=20, offvalue=0).grid(row=1, column=5)
-        Checkbutton(makerWindow, text="Melee", variable=self.melee, onvalue=-0.15, offvalue=0).grid(row=2, column=5)
-        self.unique.trace("w",lambda : refreshcost())
-        self.melee.trace("w", lambda : refreshcost())
+        traitframe = LabelFrame(makerWindow, text="Attributes")
+        traitframe.grid(row=1, column=4, rowspan=5, columnspan=2)
+
+        Checkbutton(traitframe, text="Unique", variable=self.unique, onvalue=20, offvalue=0).grid(row=0, column=0,columnspan=2)
+        Checkbutton(traitframe, text="Melee", variable=self.melee, onvalue=1, offvalue=0).grid(row=1, column=0,columnspan=2)
+
+        Label(traitframe, text="Attacks: ").grid(row=2, column=0)
+        attackmenu = OptionMenu(traitframe, self.attacks, "", "Double Attack", "Triple Attack", "Quadruple Attack")
+        attackmenu.config(width=10)
+        attackmenu.grid(row=2, column=1)
+
+        self.unique.trace("w", lambda x,y,m : refresh())
+        self.melee.trace("w", lambda x,y,m : refresh())
+        self.attacks.trace("w", lambda x,y,m : refresh())
 
         self.race = StringVar()
-        self.race.set("None")
-        racemenu = OptionMenu(makerWindow, self.race, "None", "Droid", "Cyborg", "Ewok", "Trandoshan", "Ugnaught",
-                              "Wookie", "Gungan")
-        racemenu.config(width=10)
-        racemenu.grid(row=3, column=5)
-        Label(makerWindow, text="Race").grid(row=3, column=4)
+        self.race.set("")
+        Label(traitframe, text="Race: ").grid(row=3, column=0)
+        racemenu = Entry(traitframe, width=10, textvariable=self.race).grid(row=3, column=1)
+        #racemenu = OptionMenu(traitframe, self.race, "None", "Droid", "Cyborg","---", "Ewok", "Trandoshan", "Ugnaught", "Wookie", "Gungan","Jawa")
+        #racemenu.config(width=10)
+        #racemenu.grid(row=3, column=1)
 
         self.faction = StringVar(value="Fringe")
 
-        factionmenu = OptionMenu(makerWindow, self.faction, "Fringe", "Rebel", "Old Republic", "Republic",
+        Label(traitframe, text="Faction: ").grid(row=4, column=0)
+        factionmenu = OptionMenu(traitframe, self.faction, "Fringe", "Rebel", "Old Republic", "Republic",
                                  "New Republic", "Imperial", "Seperatist", "Sith", "Yuuzhan Vong", "Mandalorian")
         factionmenu.config(width=10)
-        factionmenu.grid(row=4, column=5)
-        Label(makerWindow, text="Faction").grid(row=4, column=4)
+        factionmenu.grid(row=4, column=1)
         self.faction.trace_variable("w", lambda x, y, z: factionchanged(x, y, z))  # DbFrame.refreshfilters(self))
 
         # OptionMenu(makerWindow,textvariable=)
         Button(makerWindow, text="Export", width=5, command=lambda: tempdef()).grid(row=7, column=2)
+        Button(makerWindow, text="Change Avatar", width=5, command=lambda: changeportrait()).grid(row=7, column=3)
+
         abilitiesframe = LabelFrame(makerWindow, text="Abilities")
         forceframe = LabelFrame(makerWindow, text="Force Powers")
         abilitiesframe.grid(row=6, column=2, columnspan=2)
@@ -726,39 +823,53 @@ class Main(Tk):
 
         abilitieslb = Listbox(abilitiesframe, width=25, height=10)  # ,font=monofont)
         abilitieslb.grid(row=0, column=0)
-        abilitieslb.bind('<Double-1>', lambda x: [addability(abilitieslb.get(abilitieslb.index(abilitieslb.curselection())),abilitieslb.index(abilitieslb.curselection())),refreshcost()])
+        abilitieslb.bind('<Double-1>', lambda x: [
+            addability(abilitieslb.get(abilitieslb.index(abilitieslb.curselection())),
+                       abilitieslb.index(abilitieslb.curselection())), refresh()])
         for x, i in enumerate(self.abilitiesfull):
             abilitieslb.insert(x, i[0])
 
         forcelb = Listbox(forceframe, width=25, height=10)  # ,font=monofont)
         forcelb.grid(row=0, column=0)
-        forcelb.bind('<Double-1>', lambda x: [addforce(forcelb.get(forcelb.index(forcelb.curselection()))),refreshcost()])
+        forcelb.bind('<Double-1>',
+                     lambda x: [addforce(forcelb.get(forcelb.index(forcelb.curselection())),
+                                         forcelb.index(forcelb.curselection())), refresh()])
+
+        # for x, i in enumerate(self.forcepowersfull):
+        #     print (x,i)
+        #     forcelb.insert(x, i[0])
 
         for x, i in enumerate(self.forcepowersfull):
-            forcelb.insert(x, i)
+            forcelb.insert(x, i[0])
 
         """unique, melee, options box to pick a race..."""
 
         def tempdef(cmom):
             print(cmom)
 
-        def addability(thing,where):
-            print (thing, where)
-            self.abilities.append([thing,where])
+        def addability(thing, where):
+            print(thing, where)
+            self.abilities.append([thing, where])
 
-        def addforce(thing):
-            self.forcepowers.append(thing)
+        def addforce(thing, where):
+            self.forcepowers.append([thing, where])
 
         def factionchanged(ignorea, ignoreb, ignorec):
             self.cardchanged = True
-            refreshcost()
+            refresh()
 
         def modstat(stat, dir):
             ministat = stat
             ministat.set(ministat.get() + dir)
-            refreshcost()
+            refresh()
 
-        def refreshcost():
+        def changeportrait():
+            f = filedialog.askopenfilename()
+            print (f)
+            self.portrait = f
+            refresh()
+
+        def refresh():
             txtoffset = 0
 
             hitpoints = self.hitpoints.get()
@@ -766,77 +877,114 @@ class Main(Tk):
             attack = self.attack.get()
             damage = self.damage.get()
             force = self.force.get()
-            extracost=0
+            # extracost = 0
+            #
+            # ranks_hp = hitpoints / 10 - 1
+            # ranks_def = defense - 13
+            # ranks_atk = attack - 4
+            # ranks_dmg = damage / 10 - 1
+            # dmgtax = 0.25 + float(self.melee.get())
+            # cost_hp = ranks_hp ** 2 / 2
+            # cost_def = ranks_def ** 2 / 2
+            # cost_atk = ranks_atk ** 2 / 2
+            # cost_dmg = ranks_dmg ** 2
+            # cost_dmgtax = dmgtax * (ranks_hp + ranks_def + ranks_atk + ranks_dmg)
 
-            ranks_hp = hitpoints / 10 - 1
-            ranks_def = defense - 13
-            ranks_atk = attack - 4
-            ranks_dmg = damage / 10 - 1
-            dmgtax = 0.25 + float(self.melee.get())
-            cost_hp = ranks_hp ** 2 / 2
-            cost_def = ranks_def ** 2 / 2
-            cost_atk = ranks_atk ** 2 / 2
-            cost_dmg = ranks_dmg ** 2
-            cost_dmgtax = dmgtax * (ranks_hp + ranks_def + ranks_atk + ranks_dmg)
-
-            minicost = round(cost_hp + cost_def + cost_atk + cost_dmg + cost_dmgtax + force + 5)
+            #minicost = round(cost_hp + cost_def + cost_atk + cost_dmg + cost_dmgtax + force + 5)
             if self.cardchanged:
-                card = ("./minimaker/templates/01_" + str(self.faction.get()) + "_template.png")
+                card = ("./minimaker/templates/02_" + str(self.faction.get()) + ".png")
                 self.cardchange = False
-            im = Image.open(card)
+            offsets = []
+            #              [name],[cst],[stats,spread]
+            offsets.append([20,10,-2,12,18,11,3])
+
+
+            avatar = Image.open(self.portrait).convert("RGBA")
+            imgwidth, imgheight = avatar.size
+            sizesm = int(imgwidth / 2.5), int(imgheight / 2.5)
+            avatar = avatar.resize(sizesm, resample=Image.ANTIALIAS)
+
+            im = Image.open(card).convert("RGBA")
             imgwidth, imgheight = im.size
             imback = im.crop((imgwidth / 2, 0, imgwidth, imgheight))
+            imback.paste(avatar, (25, 625), avatar)
             sizesm = int(imgwidth / 4), int(imgheight / 2)
             imback = imback.resize(sizesm, resample=Image.ANTIALIAS)
             draw = ImageDraw.Draw(imback)
 
-            draw.text((60, 15), str(name.get()), (255, 255, 255), font=bigfont)
+            # # 680x745
 
-            draw.text((102, 85), str(hitpoints + self.unique.get()), (0, 0, 0), font=font)
-            draw.text((102, 138), str(defense), (0, 0, 0), font=font)
-            draw.text((100, 190), "+" + str(attack), (0, 0, 0), font=font)
-            draw.text((102, 243), str(damage), (0, 0, 0), font=font)
+            draw.text((60+offsets[0][0], 15+offsets[0][0]), str(name.get()), (255, 255, 255), font=bigfont)
+            draw.text((332+offsets[0][2]-(len(cost.get())*4), 25+offsets[0][3]), str(cost.get()), (0, 0, 0), font=font)
+
+            draw.text((102+offsets[0][4]-(len(str(hitpoints))*4), 85+offsets[0][5]), str(hitpoints + self.unique.get()), (0, 0, 0), font=font)
+            draw.text((102+offsets[0][4]-(len(str(defense))*4), 138+offsets[0][5]+offsets[0][6]), str(defense), (0, 0, 0), font=font)
+            draw.text((102+offsets[0][4]-(len(str(attack))*4), 190+offsets[0][5]+offsets[0][6]*2), str(attack), (0, 0, 0), font=font)
+            draw.text((102+offsets[0][4]-(len(str(damage))*4), 243+offsets[0][5]+offsets[0][6]*3), str(damage), (0, 0, 0), font=font)
+            styleoffset=10
+            draw.text((145 + styleoffset, 95 + txtoffset), "Special Abilities", (0, 0, 0), font=bigfont)
+            txtoffset += 20
+            offsetmod = 12
             if self.unique.get() > 0:
-                draw.text((145, 95 + txtoffset), "Unique", (0, 0, 0), font=smfont)
-                txtoffset += 20
-            if not self.race.get() == "None":
-                draw.text((145, 95 + txtoffset), self.race.get(), (0, 0, 0), font=smfont)
-                txtoffset += 20
-            if not self.melee.get() == "0":
-                draw.text((145, 95 + txtoffset), "Melee", (0, 0, 0), font=smfont)
-                txtoffset += 20
+                draw.text((145+styleoffset, 100 + txtoffset), "Unique", (0, 0, 0), font=smfont)
+                txtoffset += offsetmod
+            if not self.race.get() == "":
+                draw.text((145+styleoffset, 100 + txtoffset), self.race.get(), (0, 0, 0), font=smfont)
+                txtoffset += offsetmod
+            print (self.melee.get())
+            if self.melee.get() == "1":
+                extra=str(self.attacks.get())
+                if not extra == "0":
+                    term = ":"+extra
+                else: term = ""
+                draw.text((145+styleoffset, 100 + txtoffset), "Melee"+term, (0, 0, 0), font=smfont)
+                txtoffset += offsetmod
             for x in self.abilities:
                 read = self.abilitiesfull[x[1]]
-                lines = textwrap.wrap(read[0]+". "+read[1], width=39)
-                print (lines)
+                lines = textwrap.wrap(read[0] + ". " + read[1], width=41-styleoffset)
+                print(lines)
                 for line in lines:
                     width, height = smfont.getsize(line)
-                    #draw.text(((w - width) / 2, y_text), line, font=font, fill=FOREGROUND)
-                    draw.text((145, 95 + txtoffset), line, (0, 0, 0), font=smfont)
+                    # draw.text(((w - width) / 2, y_text), line, font=font, fill=FOREGROUND)
+                    draw.text((145+styleoffset, 100 + txtoffset), line, (0, 0, 0), font=smfont)
                     txtoffset += height
-
-                #draw.text((145, 95 + txtoffset), str(read[0])+". "+str(read[1]),(0, 0, 0), font=smfont)
-                txtoffset += 20
-                extracost += int(read[3][:2])
+                txtoffset += 0
+                # draw.text((145, 95 + txtoffset), str(read[0])+". "+str(read[1]),(0, 0, 0), font=smfont)
+                #txtoffset += 20
+                #extracost += int(read[3][:2])
             if force > 0:
-                draw.text((145, 100 + txtoffset), "Force " + str(force), (0, 0, 0), font=smfont)
+                draw.text((145 + styleoffset, 100 + txtoffset), "Force Powers", (0, 0, 0), font=bigfont)
+                draw.text((145 + styleoffset, 125 + txtoffset), "Force " + str(force), (0, 0, 0), font=smfont)
                 txtoffset += 20
             for x in self.forcepowers:
-                print(x)
-                content = self.forcepowersfull.index(x)
-                print (content)
-                draw.text((145, 95 + txtoffset), str(x),(0, 0, 0), font=smfont)
-                txtoffset += 20
-            draw.text((332, 25), str(minicost+extracost), (0, 0, 0), font=font)
+                read = self.forcepowersfull[x[1]]
+                lines = textwrap.wrap(read[0] + ". " + read[1], width=41 - styleoffset)
+                for line in lines:
+                    width, height = smfont.getsize(line)
+                    # draw.text(((w - width) / 2, y_text), line, font=font, fill=FOREGROUND)
+                    draw.text((145+styleoffset, 125 + txtoffset), line, (0, 0, 0), font=smfont)
+                    txtoffset += height
+
+            #     content = self.forcepowersfull.index(x)
+            #     print(content)
+            #     draw.text((145 + styleoffset, 120 + txtoffset), str(x), (0, 0, 0), font=smfont)
+            #     txtoffset += 20
+             #draw.text((332, 25), str(minicost + extracost), (0, 0, 0), font=font)
 
             render = ImageTk.PhotoImage(imback)
             img = Label(makerWindow, image=render, width=imgwidth / 4, height=imgheight / 2)
             img.image = render
             img.grid(row=0, column=0, rowspan=12)
 
-        refreshcost()
+            # render = ImageTk.PhotoImage(im_portrait)
+            # img_portrait = Label(makerWindow, image=render, width=portrait_width / 2, height=portrait_height / 2)
+            # img_portrait.image = render
+            # img_portrait.grid(row=0, column=0, rowspan=12)
+
+        refresh()
 
 
 if __name__ == "__main__":
     app = Main()
     mainloop()
+
