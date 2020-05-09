@@ -15,6 +15,8 @@ import os
 import ast
 import ctypes
 
+#from fontTools.ttLib import TTFont
+
 import sqlite3
 from sqlite3 import Error
 
@@ -209,7 +211,7 @@ class DbFrame(Frame):
                 w.grid(sticky="W", row=1, column=x)
                 var_set.trace_variable("w", lambda x, y, z: self.testme(x, y, z))  # DbFrame.refreshfilters(self))
             elif i == "qty":
-                p = OptionMenu(topframe, controller.var_player, "None", "matts")
+                p = OptionMenu(topframe, controller.var_player, "None", "matts","tims")
                 p.config(width=len(i))  # columnwidth[x])
                 p.grid(sticky="W", row=1, column=x)
             else:
@@ -277,6 +279,9 @@ class DbFrame(Frame):
         imp_list = Button(squadframe, width=10, text="Load List",
                           command=lambda: [Main.loadlist(self, controller.lb2), controller.squadcost()])
         imp_list.grid(row=5, column=0)
+        xp_tokens = Button(squadframe, width=10, text="Export Tokens",
+                          command=lambda: Main.exporttokens(self, controller.lb2))
+        xp_tokens.grid(row=6, column=0)
 
         controller.lb3 = Listbox(squadframe, width=20, height=20)
         controller.lb3.configure(font=monofont)
@@ -380,6 +385,9 @@ class DbFrame(Frame):
         for x in statements:
             if x: command += str(x)
         print(command)
+        tempcommand = str("SELECT * FROM minis_list Inner Join minis_owned_matts on minis_list.uniq_id = minis_owned_matts.\"mini id\" WHERE minis_owned_matts.count is NULL and minis_list.faction = \"Rebel\" ORDER BY minis_list.cost ASC")
+        #command = tempcommand
+
         cur = self.conn.cursor()
         cur.execute(command)
         table = cur.fetchall()
@@ -576,6 +584,39 @@ class Main(Tk):
         abilities = list(dict.fromkeys(abilities))  # removes duplicates from the list
         abilities.sort()  # sorts the list alphabetically
 
+    def exporttokens(self, lb):
+        list = lb
+        tokenlist = []
+        source=os.getcwd()
+        source+="\\tokens\\"
+
+        for x in range(list.size()):
+            tokenlist.append(list.get(x).split("_")[1])
+            #cardlist.append(list.get(x).split("_")[1])
+            #cost += int(list.get(x).split("_")[2])
+
+
+        destination = filedialog.askdirectory(initialdir="./custom", title='token location')
+        if destination is None:  # asksaveasfile return `None` if dialog closed with "cancel".
+            return
+        destination = destination.replace("/","\\",4)
+        files=[]
+
+        for x, i in enumerate(tokenlist):
+            print ("i",i)
+
+            for t in os.listdir(source):
+                if os.path.isfile(os.path.join(source, t)) and i in t:
+                    files.append(t)
+
+        print ("Tokens: ",files)
+        for n in files:
+            cmd = "copy "+source+n+" "+destination+"\\"+n
+            print (cmd)
+            os.system(cmd)
+
+
+
     def exportlb(self, lb):
         list = lb
         cost = 0
@@ -750,6 +791,14 @@ class Main(Tk):
         font = ImageFont.truetype('impact', size=16)
         smfont = ImageFont.truetype('verdana', size=11)
 
+        tech_small = ImageFont.truetype(r'.\DB\Tecnica Stencil\\ttf\\TecnicaStencil1Rg.ttf', 14)
+        tech_bold = ImageFont.truetype(r'.\DB\Tecnica Stencil\\ttf\\TecnicaStencil1Bd.ttf', 14)
+        tech_large = ImageFont.truetype(r'.\DB\Tecnica Stencil\\ttf\\TecnicaStencil1Bd.ttf', 17)
+        #tech_small = TTFont(".\DB\Tecnica Stencil\\ttf\\TecnicaStencil1Bd.ttf")
+
+
+
+
         Label(makerWindow, text="Name: ").grid(row=0, column=2)
         name = StringVar(value='unnamed')
         namefld = Entry(makerWindow, width=20, textvariable=name).grid(row=0, column=3)
@@ -922,14 +971,14 @@ class Main(Tk):
             draw.text((102+offsets[0][4]-(len(str(attack))*4), 190+offsets[0][5]+offsets[0][6]*2), str(attack), (0, 0, 0), font=font)
             draw.text((102+offsets[0][4]-(len(str(damage))*4), 243+offsets[0][5]+offsets[0][6]*3), str(damage), (0, 0, 0), font=font)
             styleoffset=10
-            draw.text((145 + styleoffset, 95 + txtoffset), "Special Abilities", (0, 0, 0), font=bigfont)
+            draw.text((145 + styleoffset, 95 + txtoffset), "Special Abilities", (0, 0, 0), font=tech_large)
             txtoffset += 20
             offsetmod = 12
             if self.unique.get() > 0:
-                draw.text((145+styleoffset, 100 + txtoffset), "Unique", (0, 0, 0), font=smfont)
+                draw.text((145+styleoffset, 100 + txtoffset), "Unique", (0, 0, 0), font=tech_small)
                 txtoffset += offsetmod
             if not self.race.get() == "":
-                draw.text((145+styleoffset, 100 + txtoffset), self.race.get(), (0, 0, 0), font=smfont)
+                draw.text((145+styleoffset, 100 + txtoffset), self.race.get(), (0, 0, 0), font=tech_small)
                 txtoffset += offsetmod
             print (self.melee.get())
             if self.melee.get() == "1":
@@ -937,32 +986,32 @@ class Main(Tk):
                 if not extra == "0":
                     term = ":"+extra
                 else: term = ""
-                draw.text((145+styleoffset, 100 + txtoffset), "Melee"+term, (0, 0, 0), font=smfont)
+                draw.text((145+styleoffset, 100 + txtoffset), "Melee"+term, (0, 0, 0), font=tech_small)
                 txtoffset += offsetmod
             for x in self.abilities:
                 read = self.abilitiesfull[x[1]]
-                lines = textwrap.wrap(read[0] + ". " + read[1], width=41-styleoffset)
+                lines = textwrap.wrap(read[0] + ". " + read[1], width=48-styleoffset)
                 print(lines)
                 for line in lines:
-                    width, height = smfont.getsize(line)
+                    width, height = tech_small.getsize(line)
                     # draw.text(((w - width) / 2, y_text), line, font=font, fill=FOREGROUND)
-                    draw.text((145+styleoffset, 100 + txtoffset), line, (0, 0, 0), font=smfont)
+                    draw.text((145+styleoffset, 100 + txtoffset), line, (0, 0, 0), font=tech_small)
                     txtoffset += height
                 txtoffset += 0
                 # draw.text((145, 95 + txtoffset), str(read[0])+". "+str(read[1]),(0, 0, 0), font=smfont)
                 #txtoffset += 20
                 #extracost += int(read[3][:2])
             if force > 0:
-                draw.text((145 + styleoffset, 100 + txtoffset), "Force Powers", (0, 0, 0), font=bigfont)
-                draw.text((145 + styleoffset, 125 + txtoffset), "Force " + str(force), (0, 0, 0), font=smfont)
+                draw.text((145 + styleoffset, 100 + txtoffset), "Force Powers", (0, 0, 0), font=tech_large)
+                draw.text((145 + styleoffset, 125 + txtoffset), "Force " + str(force), (0, 0, 0), font=tech_small)
                 txtoffset += 20
             for x in self.forcepowers:
                 read = self.forcepowersfull[x[1]]
-                lines = textwrap.wrap(read[0] + ". " + read[1], width=41 - styleoffset)
+                lines = textwrap.wrap(read[0] + ". " + read[1], width=48 - styleoffset)
                 for line in lines:
-                    width, height = smfont.getsize(line)
+                    width, height = tech_small.getsize(line)
                     # draw.text(((w - width) / 2, y_text), line, font=font, fill=FOREGROUND)
-                    draw.text((145+styleoffset, 125 + txtoffset), line, (0, 0, 0), font=smfont)
+                    draw.text((145+styleoffset, 125 + txtoffset), line, (0, 0, 0), font=tech_small)
                     txtoffset += height
 
             #     content = self.forcepowersfull.index(x)
