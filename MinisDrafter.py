@@ -37,18 +37,18 @@ class PackFrame(Frame):
             for index, i in enumerate(var):
                 var[index].set(state)
 
-    def getbox(self):
+    def getbox(self,controller):
         answer = simpledialog.askinteger("Input", "Open 1-20 boxes",
                                          parent=self,
                                          minvalue=1, maxvalue=20)
         if answer == None: answer = 1
         self.pack_menubar.entryconfig(4, label=str(answer))
+        controller.qty_packs=int(answer)
 
-    def generate(self, conn, varlist, pack_type, packs_qty):
+    def generate(self, conn, varlist, pack_type):
         setmenu_VarList = varlist
         cur = conn.cursor()
         packtype = pack_type
-        qty_packs = packs_qty
         cardlist = []
         pdf = FPDF()
         pdf.set_font('Arial', 'B', 10)
@@ -59,8 +59,8 @@ class PackFrame(Frame):
             if i.get() == 1:
                 setsenabled.append(self.SETS[0][x])
 
-        for p in range(1, qty_packs + 1):
-            print("opening pack", p, "of", qty_packs)
+        for p in range(1, self.qty_packs + 1):
+            print("opening pack", p, "of", self.qty_packs)
             pdf.add_page()
 
             minilist = []
@@ -148,12 +148,13 @@ class DbFrame(Frame):
         # controller.popup()
         monofont = font.Font(family='Courier', size=8)
         # monofont = 'TkFixedFont'
-        topframe = Frame(self, width=width)
+        print (width,height)
+        topframe = Frame(self, width=width, height=height)
         topframe.grid(row=0, column=0)
-        bottomframe = Frame(self, width=width, height=height - 350)  # 550?
-        bottomframe.grid(row=2, column=0)
-        squadframe = Frame(self, width=width, height=350)
-        squadframe.grid(row=3, column=0)
+        bottomframe = Frame(self, width=width, height=height)  # 550?
+        bottomframe.grid(row=1, column=0)
+        squadframe = Frame(self, width=width, height=height*0.30)
+        squadframe.grid(row=2, column=0)
 
         controller.colheadVar = []
         controller.headers = ["name", "set", "id", "faction", "rarity", "cost", "size", "hit points", "defense",
@@ -166,7 +167,7 @@ class DbFrame(Frame):
         columnwidth = [49, 24, 4, 19, 12, 5, 9, 3, 3, 3, 3, 37, 3, 33, 5]
         # columnwidth = [30, 15, 4, 19, 14, 6, 9, 10, 10, 3, 3, 36, 3, 38, 5]
 
-        var_set = StringVar()
+        controller.var_set = StringVar()
         controller.var_player = StringVar()
         controller.var_player.set("None")
         controller.var_sort = StringVar()
@@ -193,30 +194,35 @@ class DbFrame(Frame):
         Button(topframe, text="FP", width=columnwidth[12]+offset, font=monofont, command=lambda: self.sortby("force points", controller)).grid(sticky="W", row=0, column=12)
         Button(topframe, text="Force Powers", width=columnwidth[13]+offset-10, font=monofont, command=lambda: self.sortby("force powers", controller)).grid(sticky="W", row=0, column=13)
         Button(topframe, text="Qty", width=columnwidth[14]+offset, font=monofont, command=lambda: self.sortby("qty", controller)).grid(sticky="W", row=0, column=14)
-
+        tmp=[]
         for x, i in enumerate(controller.headers_labels):
             controller.colheadVar.append(StringVar(self))
 
             #Button(topframe, text=i, width=len(i), font=monofont,command=lambda: self.sortby(self,controller)).grid(sticky="W", row=0, column=x)
 
-            # Label(topframe, text=i, width=len(i), font=monofont).grid(sticky="W", row=0, column=x)
+            # Laabel(topframe, text=i, width=len(i), font=monofont).grid(sticky="W", row=0, column=x)
             if i == "set":
-                w = OptionMenu(topframe, var_set, "Alliance and Empire", "Bounty Hunters", "Alliance and Empire",
+                w = OptionMenu(topframe, controller.colheadVar[x], "Alliance and Empire", "Bounty Hunters", "Alliance and Empire",
                                "Champions of the Force", "Clone Strike", "The Clone Wars",
                                "The Force Unleashed", "Galaxy at War", "Imperial Entanglements", "Jedi Academy",
                                "Knights of the Old Republic", "Legacy of the Force",
                                "Masters of the Force", "Revenge of the Sith", "Rebel Storm", "Dark Times", "Universe",
-                               "Clone Wars Starter","Affinity")
+                               "Clone Wars Starter","Battle of Hoth","Clone Wars Battles","The Attack on Teth","Showdown at Teth Palace","The Crystal Caves of Ilum","Affinity")
+                controller.colheadVar[x].trace_add('write', lambda x, y, z: DbFrame.refreshfilters(controller))
                 w.config(width=columnwidth[x])
                 w.grid(sticky="W", row=1, column=x)
-                var_set.trace_variable("w", lambda x, y, z: self.testme(x, y, z))  # DbFrame.refreshfilters(self))
+                tmp.append("set")
+
             elif i == "qty":
                 p = OptionMenu(topframe, controller.var_player, "None", "matts","tims")
                 p.config(width=len(i))  # columnwidth[x])
                 p.grid(sticky="W", row=1, column=x)
             else:
-                Entry(topframe, width=columnwidth[x], textvariable=controller.colheadVar[x]).grid(sticky="W", row=1,
-                                                                                                  column=x)
+                tmp.append(Entry(topframe, width=columnwidth[x], textvariable=controller.colheadVar[x]))
+                controller.colheadVar[x].trace_add('write', lambda x, y, z: DbFrame.refreshfilters(controller))
+                tmp[x].grid(sticky="W", row=1,column=x)
+
+
         # make drop downs for set,faction,rarity,size ... maybe abilities/force
         controller.lb1 = Listbox(bottomframe, width=200, height=25)  # ,font=monofont)
         controller.lb1.configure(font=monofont)
@@ -283,27 +289,37 @@ class DbFrame(Frame):
                           command=lambda: Main.exporttokens(self, controller.lb2))
         xp_tokens.grid(row=6, column=0)
 
-        controller.lb3 = Listbox(squadframe, width=20, height=20)
+        imgsize = LabelFrame(squadframe, text="Preview Size")
+        Button(imgsize,width=4,text="+",command=lambda : previewsize(1)).grid(row=0,column=1)
+        Button(imgsize, width=4, text="-", command=lambda : previewsize(-1)).grid(row=0,column=0)
+        imgsize.grid(row=7,column=0)
+
+        glossbox= LabelFrame(squadframe, text="Glossary Lookup")
+        controller.lb3 = Listbox(glossbox, width=20, height=20)
         controller.lb3.configure(font=monofont)
         controller.lb3.grid(row=0, column=4, rowspan=21)
         controller.lb3.bind('<<ListboxSelect>>', lambda x: DbFrame.showgloss(controller))
 
-        controller.lb3selected = Text(squadframe, width=30, height=20)
+        controller.lb3selected = Text(glossbox, width=30, height=19)
         controller.lb3selected.config(wrap=WORD)
         controller.lb3selected.grid(row=0,column=5,rowspan=21)
 
 
-        glossary = StringVar()
-        controller.glossary_filter = Entry(squadframe, width=50, textvariable=glossary)
-        controller.glossary_filter.grid(row=23, column=4)
-        controller.glossary_button = Button(squadframe,text="Go",command=lambda : DbFrame.refreshgloss(controller))
-        controller.glossary_button.grid(row=23,column=5)
+        controller.gloss_var = StringVar()
+        controller.gloss_var.trace_add('write', lambda x,y,z: DbFrame.refreshgloss(controller))
+        controller.glossary_filter = Entry(glossbox, width=65, textvariable=controller.gloss_var)
+        controller.glossary_filter.grid(row=23, column=4,columnspan=2)
+        glossbox.grid(row=0,column=5,rowspan=21)
+
+
+    def testtracing (self):
+        print ("hit")
 
     def sortby(self, u,t):
         print (u,t)
         t.var_sort.set(u)
         print (t.var_sort.get())
-        self.refreshfilters()
+        DbFrame.refreshfilters(self.controller)
 
     def testme(self, one, two, three):
         print(one)
@@ -312,25 +328,28 @@ class DbFrame(Frame):
 
     def refreshgloss(self):
         self.lb3.delete(0, 1000)
-        term = self.glossary_filter.get().lower()
-        print ("looking for",term)
+        term = self.gloss_var.get()
+        #term = self.glossary_filter.get().lower()
+        print("looking for", term)
         for x, i in enumerate(self.glossary):
-            #print(x, i)
+            # print(x, i)
             if not term == "":
                 if term in i[0].lower() or term in i[1].lower():
-                    self.lb3.insert(x,str(i[0]+ "              " + str(i[1])))
-            else: self.lb3.insert(x, str(i[0] + "              " + str(i[1])))
+                    self.lb3.insert(x, str(i[0] + "              " + str(i[1])))
+            else:
+                self.lb3.insert(x, str(i[0] + "              " + str(i[1])))
+
 
     def showgloss(self):
         self.lb3selected.delete(1.0, END)
         stupidvar = self.lb3.get(self.lb3.index(self.lb3.curselection()))
         stupidvar = stupidvar.split("              ")[1]
-        print (stupidvar)
         self.lb3selected.insert(INSERT, stupidvar)
-        #self.lb3selected.insert(str(stupidvar))
 
     def refreshfilters(self):
         player = self.var_player.get()
+        set= self.var_set.get()
+
         self.lb1.delete(0, 1000)
         statements = [False] * 16
         first = True
@@ -349,13 +368,24 @@ class DbFrame(Frame):
         for x, i in enumerate(self.colheadVar, 1):
             val = i.get()
             filtered = ""
-            if val:
+            print (val)
+            if val == "set":
+                print ("hi!")
+                if first:
+                    first = False
+                    statements[x] = "WHERE minis_list.set = \""+ set+ "\""
+                else:
+                    statements[x] = " AND minis_list.set = \""+ set+ "\""
+                #statements[x] += no + "LIKE \"%" + val.strip("!") + "%\""
+
+            elif val:
                 if first:
                     first = False
                     statements[x] = "WHERE \"" + self.headers[x - 1]+ "\" "
 
                 else:
                     statements[x] = " AND \"" + self.headers[x - 1] + "\" "
+
                 for z in range(val.count(",")):
                     current_val = val.split(",")[z+1]
                     if "!" in current_val: no = "NOT "
@@ -413,12 +443,16 @@ class DbFrame(Frame):
                 extra_a = ""
                 extra_b = ""
                 extra_c = ""
+                print (i)
                 if i[1]:
                     if len(i[1])>37: extra_a="..."
                 if i[12]:
                     if len(i[12])>25: extra_b="..."
                 if i[14]:
                     if len(i[14])>25: extra_c="..."
+                #print ("{0:3d} {1:39}{2:27} {3:2d} {4:17}{5:10}{6:5d} {7:7}{8:3d}{9:3d}{10:3d}{11:3d}  {12:28}{13:5d} {14:28}".format(
+                #                    i[0], str(i[1])[0:36]+extra_a, str(i[2]), i[3], str(i[4]), str(i[5]), i[6], str(i[7]), i[8], i[9],
+                #                    i[10], i[11], str(i[12])[0:25]+extra_b, i[13], str(i[14])[0:25]+extra_c))
                 self.lb1.insert(x,
                                 "{0:3d} {1:39}{2:27} {3:2d} {4:17}{5:10}{6:5d} {7:7}{8:3d}{9:3d}{10:3d}{11:3d}  {12:28}{13:5d} {14:28}".format(
                                     i[0], str(i[1])[0:36]+extra_a, str(i[2]), i[3], str(i[4]), str(i[5]), i[6], str(i[7]), i[8], i[9],
@@ -464,7 +498,8 @@ class Main(Tk):
                      "The Force Unleashed", "Galaxy at War", "Imperial Entanglements", "Jedi Academy",
                      "Knights of the Old Republic", "Legacy of the Force",
                      "Masters of the Force", "Revenge of the Sith", "Rebel Storm", "Dark Times", "Universe",
-                     "Clone Wars Starter", "Clone Wars Scenario", "Battle of Hoth","Affinity"], ["ae",
+                     "Clone Wars Starter", "Clone Wars Scenario", "Battle of Hoth","Clone Wars Battles",
+                     "The Attack on Teth","Showdown at Teth Palace","The Crystal Caves of Ilum","Affinity"], ["ae",
                                                                                       "bh",
                                                                                       "ae",
                                                                                       "cotf",
@@ -484,6 +519,10 @@ class Main(Tk):
                                                                                       "cwsp",
                                                                                       "cwmp",
                                                                                       "boh",
+                                                                                      "cwbp",
+                                                                                      "aot",
+                                                                                      "stp",
+                                                                                      "cci",
                                                                                       "affinity"]
         self.FACTIONS = ["Rebel", "Imperial", "The Old Republic", "The New Republic", "Sith", "Republic", "Seperatist",
                          "Yuuzhan Vong", "Mandolorian", "Fringe"]
@@ -500,13 +539,11 @@ class Main(Tk):
         self.pack_menubar.add_cascade(label="Sets", underline=0, menu=setlist_menu)
         self.pack_menubar.add_cascade(label="Pack Type", underline=0, menu=pack_menu)
         self.pack_menubar.add_command(label="Change Box Count",
-                                      command=lambda: PackFrame.getbox(
-                                          self)),  # command=lambda : DoSomethingWithInput(a.get))
+                                      command=lambda: PackFrame.getbox(self))
         self.pack_menubar.add_command(label="1")
-        qty_packs = 1
+        self.qty_packs = 1
         self.pack_menubar.add_command(label="Go", underline=0,
-                                      command=lambda: PackFrame.generate(self, self.conn, setmenu_VarList, packtype,
-                                                                         qty_packs))
+                                      command=lambda: PackFrame.generate(self, self.conn, setmenu_VarList, packtype))
         self.pack_menubar.add_separator()
         self.pack_menubar.add_command(label="DB Browser", command=lambda: self.show_frame("DbFrame"))
 
