@@ -35,13 +35,15 @@ class PackFrame(Frame):
         #     for index, i in enumerate(var):
         #         var[index].set(state)
 
-    def getbox(self,controller):
+    def getbox(self):
         answer = simpledialog.askinteger("Input", "Open 1-20 boxes",
                                          parent=self,
                                          minvalue=1, maxvalue=20)
         if answer == None: answer = 1
-        self.pack_menubar.entryconfig(4, label=str(answer))
-        controller.qty_packs=int(answer)
+        self.qty_packs = int(answer)
+        self.pack_menubar.entryconfig(4, label=str(self.qty_packs))
+
+
 
     def generate(self, conn, varlist, pack_type):
         setmenu_VarList = varlist
@@ -50,7 +52,7 @@ class PackFrame(Frame):
         cardlist = []
         pdf = FPDF()
         pdf.set_font('Arial', 'B', 10)
-
+        #self.qty_packs = PackFrame.qty_packs
         """Grab the sets that are turned on"""
         setsenabled = []
         for x, i in enumerate(setmenu_VarList):
@@ -170,6 +172,8 @@ class DbFrame(Frame):
         controller.var_sort = StringVar()
         controller.var_sort.set("Name")
         controller.colheadbutton=[]
+        controller.ASC = StringVar()
+        controller.ASC.set("ASC")
 
         #LAAAAAAAAAAAAAAAZYYYYYYYYYYYYYYYYY
         offset=-2
@@ -212,12 +216,14 @@ class DbFrame(Frame):
 
             elif i == "qty":
                 p = OptionMenu(topframe, controller.var_player, "None", "matts","tims")
+                controller.var_player.trace_add('write', lambda x, y, z: DbFrame.refreshfilters(controller))
                 p.config(width=len(i))  # columnwidth[x])
                 p.grid(sticky="W", row=1, column=x)
             else:
                 tmp.append(Entry(topframe, width=columnwidth[x], textvariable=controller.colheadVar[x]))
                 controller.colheadVar[x].trace_add('write', lambda x, y, z: DbFrame.refreshfilters(controller))
                 tmp[x].grid(sticky="W", row=1,column=x)
+
 
 
         # make drop downs for set,faction,rarity,size ... maybe abilities/force
@@ -310,8 +316,15 @@ class DbFrame(Frame):
         print ("hit")
 
     def sortby(self, u,t):
-        print (u,t)
-        t.var_sort.set(u)
+        new = u
+        current = t.var_sort.get()
+        order = t.ASC.get()
+        if new == current:
+            if order == "ASC": t.ASC.set("DESC")
+            elif order == "DESC": t.ASC.set("ASC")
+        else:
+            t.var_sort.set(u)
+            t.ASC.set("ASC")
         DbFrame.refreshfilters(self.controller)
 
     def testme(self, one, two, three):
@@ -336,9 +349,58 @@ class DbFrame(Frame):
         stupidvar = stupidvar.split("              ")[1]
         self.lb3selected.insert(INSERT, stupidvar)
 
+    def exportscript(self):
+        command="SELECT * FROM minis_list ORDER BY minis_list.\"name\" ASC, minis_list.id ASC"
+        cur = self.conn.cursor()
+        cur.execute(command)
+        table = cur.fetchall()
+
+        character = """"""
+        for x, i in enumerate(table):
+            print (x,i)
+            character += "\"name\": [{"+i[1]+"}]\n"
+            character += "\"set\": [{" + i[2] + "}]\n"
+            character += "\"id\": [{" + str(i[3]) + "}]\n"
+            character += "\"faction\": [{" + i[4] + "}]\n"
+            character += "\"rarity\": [{" + str(i[5]) + "}]\n"
+            character += "\"cost\": [{" + str(i[6]) + "}]\n"
+            character += "\"size\": [{" + str(i[7]) + "}]\n"
+            character += "\"hit points\": [{" + str(i[8]) + "}]\n"
+            character += "\"defense\": [{" + str(i[9]) + "}]\n"
+            character += "\"attack\": [{" + str(i[10]) + "}]\n"
+            character += "\"damage\": [{" + str(i[11]) + "}]\n"
+
+            character += "\"abilities\": [\n"
+            first = True
+            for y in str(i[12]).split(";"):
+                if first: first = False
+                else: character += ",\n"
+                character += "     { \"name\": \""+str(y)+"\" }"
+            character += "]\n"
+            character += "\"force points\": [{" + str(i[13]) + "}]\n"
+
+            character += "\"force powers\": [\n"
+            first = True
+            for y in str(i[14]).split(";"):
+                if first:
+                    first = False
+                else:
+                    character += ",\n"
+                character += "     { \"name\": \"" + str(y) + "\" }"
+            character += "]\n\n"
+
+        f = open("demofile2.txt", "w")
+        f.write(character)#"Now the file has more content!")
+        f.close()
+            # character += "\"abilities": [
+            #
+            # { "name": """+i[12]+"},\n" """
+            # { \"name\": """
+
     def refreshfilters(self):
         player = self.var_player.get()
         set= self.var_set.get()
+        order = self.ASC.get()
 
         self.lb1.delete(0, 1000)
         statements = [False] * 16
@@ -398,12 +460,13 @@ class DbFrame(Frame):
                     else: no=""
                     statements[x] += no + "LIKE \"%" + val.strip("!") + "%\""
         sortorder = self.var_sort.get().lower()
-        statements.append(" ORDER BY minis_list.\""+sortorder+"\" ASC, minis_list.id ASC")
+        print (order)
+        statements.append(" ORDER BY minis_list.\""+sortorder+"\" "+order+", minis_list.id ASC")
         command = ""
         for x in statements:
             if x: command += str(x)
         print(command)
-        tempcommand = str("SELECT * FROM minis_list Inner Join minis_owned_matts on minis_list.uniq_id = minis_owned_matts.\"mini id\" WHERE minis_owned_matts.count is NULL and minis_list.faction = \"Rebel\" ORDER BY minis_list.cost ASC")
+        #tempcommand = str("SELECT * FROM minis_list Inner Join minis_owned_matts on minis_list.uniq_id = minis_owned_matts.\"mini id\" WHERE minis_owned_matts.count is NULL and minis_list.faction = \"Rebel\" ORDER BY minis_list.cost ASC")
         #command = tempcommand
 
         cur = self.conn.cursor()
@@ -447,7 +510,7 @@ class DbFrame(Frame):
 class Main(Tk):
     def __init__(self):
         Tk.__init__(self)
-        self.title("SW Minis Drafter - v1.6")
+        self.title("SW Minis Companion - v1.6")
         w, h = self.winfo_screenwidth(), self.winfo_screenheight()
         #self.overrideredirect(1)
         self.geometry("%dx%d+0+0" % (w, h - 50))
@@ -472,11 +535,12 @@ class Main(Tk):
         #self.db_menubar.add_cascade(label="Refresh Filters", command=lambda: DbFrame.refreshfilters(self))
         # self.db_menubar.add_cascade(label="Load Player File", command=lambda: DbFrame.loadplayer())
         # self.db_menubar.add_command(label="All Minis")
-        self.db_menubar.add_command(label="Pack Generator", command=lambda: self.show_frame("PackFrame"))
+        self.db_menubar.add_command(label="Drafter", command=lambda: self.show_frame("PackFrame"))
         self.db_menubar.add_command(label="Mini Maker", command=lambda: self.minimaker())
         self.db_menubar.add_command(label="Preferences", command=lambda: self.preferences())
         self.db_menubar.add_command(label="Clear Filters", command=lambda: self.clearfilters())
         self.db_menubar.add_cascade(label="Close", command=lambda: self.safeclose())
+        self.db_menubar.add_command(label="makeandruslist", command=lambda: DbFrame.exportscript(self))
 
         self.SETS = ["Alliance and Empire", "Bounty Hunters", "Alliance and Empire", "Champions of the Force",
                      "Clone Strike", "The Clone Wars",
@@ -589,6 +653,8 @@ class Main(Tk):
     def clearfilters(self):
         for x in self.colheadVar:
             x.set("")
+
+
 
     def safeclose(self):
         folder = './tmp/'
