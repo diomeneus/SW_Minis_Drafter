@@ -21,6 +21,7 @@ import sqlite3
 from sqlite3 import Error
 
 from fpdf import FPDF
+from PyPDF2 import PdfFileReader
 
 
 class PackFrame(Frame):
@@ -30,12 +31,9 @@ class PackFrame(Frame):
         width, height = self.winfo_screenwidth(), self.winfo_screenheight()
         controller.bottomframe = Frame(self, width=width, height=height)
         controller.bottomframe.grid(row=0, column=0)
-
-        """pretty confident this has gotta move"""
-
-        def modAll(var, state):
-            for index, i in enumerate(var):
-                var[index].set(state)
+        # def modAll(var, state):
+        #     for index, i in enumerate(var):
+        #         var[index].set(state)
 
     def getbox(self,controller):
         answer = simpledialog.askinteger("Input", "Open 1-20 boxes",
@@ -148,7 +146,6 @@ class DbFrame(Frame):
         # controller.popup()
         monofont = font.Font(family='Courier', size=8)
         # monofont = 'TkFixedFont'
-        print (width,height)
         topframe = Frame(self, width=width, height=height)
         topframe.grid(row=0, column=0)
         bottomframe = Frame(self, width=width, height=height)  # 550?
@@ -263,9 +260,7 @@ class DbFrame(Frame):
         im = Image.open("./cards\\nopreview.png")
         imgwidth, imgheight = im.size
         im = im.resize((int(imgwidth / 3), int(imgheight / 3)), Image.ANTIALIAS)
-        imgwidth, imgheight = im.size
-        # print(im.size)
-        # im2 = ImageTk.PhotoImage(im)
+        #imgwidth, imgheight = im.size
         im = ImageTk.PhotoImage(im)
 
         controller.preview_lbl = Label(squadframe, image=im)
@@ -275,16 +270,15 @@ class DbFrame(Frame):
         controller.compare_lbl.image = im
         controller.compare_lbl.grid(row=0, column=3, rowspan=25)
 
-        xp_pdf = Button(squadframe, width=10, text="Export PDF", command=lambda: Main.exportlb(self, controller.lb2))
+        xp_pdf = Button(squadframe, width=10, text="Save", command=lambda: Main.exportlb(self, controller.lb2))
         xp_pdf.grid(row=2, column=0)
-        xp_list = Button(squadframe, width=10, text="Save List", command=lambda: Main.savelist(self, controller.lb2))
-        xp_list.grid(row=3, column=0)
+        imp_list = Button(squadframe, width=10, text="Load", command=lambda: [Main.loadlist(self, controller.lb2), controller.squadcost()])
+        imp_list.grid(row=3, column=0)
+        clear_list = Button(squadframe, width=10, text="Clear", command=lambda: controller.lb2.delete(0, 1000))
+        clear_list.grid(row=5, column=0)
         compare = Button(squadframe, width=10, text="Compare",
                          command=lambda: Main.compare_mini(controller, controller.lb2, controller.lb1))
         compare.grid(row=4, column=0)
-        imp_list = Button(squadframe, width=10, text="Load List",
-                          command=lambda: [Main.loadlist(self, controller.lb2), controller.squadcost()])
-        imp_list.grid(row=5, column=0)
         xp_tokens = Button(squadframe, width=10, text="Export Tokens",
                           command=lambda: Main.exporttokens(self, controller.lb2))
         xp_tokens.grid(row=6, column=0)
@@ -318,7 +312,6 @@ class DbFrame(Frame):
     def sortby(self, u,t):
         print (u,t)
         t.var_sort.set(u)
-        print (t.var_sort.get())
         DbFrame.refreshfilters(self.controller)
 
     def testme(self, one, two, three):
@@ -329,10 +322,7 @@ class DbFrame(Frame):
     def refreshgloss(self):
         self.lb3.delete(0, 1000)
         term = self.gloss_var.get()
-        #term = self.glossary_filter.get().lower()
-        print("looking for", term)
         for x, i in enumerate(self.glossary):
-            # print(x, i)
             if not term == "":
                 if term in i[0].lower() or term in i[1].lower():
                     self.lb3.insert(x, str(i[0] + "              " + str(i[1])))
@@ -367,10 +357,8 @@ class DbFrame(Frame):
             first = False
         for x, i in enumerate(self.colheadVar, 1):
             val = i.get()
-            filtered = ""
-            print (val)
+            #filtered = ""
             if val == "set":
-                print ("hi!")
                 if first:
                     first = False
                     statements[x] = "WHERE minis_list.set = \""+ set+ "\""
@@ -443,16 +431,12 @@ class DbFrame(Frame):
                 extra_a = ""
                 extra_b = ""
                 extra_c = ""
-                print (i)
                 if i[1]:
                     if len(i[1])>37: extra_a="..."
                 if i[12]:
                     if len(i[12])>25: extra_b="..."
                 if i[14]:
                     if len(i[14])>25: extra_c="..."
-                #print ("{0:3d} {1:39}{2:27} {3:2d} {4:17}{5:10}{6:5d} {7:7}{8:3d}{9:3d}{10:3d}{11:3d}  {12:28}{13:5d} {14:28}".format(
-                #                    i[0], str(i[1])[0:36]+extra_a, str(i[2]), i[3], str(i[4]), str(i[5]), i[6], str(i[7]), i[8], i[9],
-                #                    i[10], i[11], str(i[12])[0:25]+extra_b, i[13], str(i[14])[0:25]+extra_c))
                 self.lb1.insert(x,
                                 "{0:3d} {1:39}{2:27} {3:2d} {4:17}{5:10}{6:5d} {7:7}{8:3d}{9:3d}{10:3d}{11:3d}  {12:28}{13:5d} {14:28}".format(
                                     i[0], str(i[1])[0:36]+extra_a, str(i[2]), i[3], str(i[4]), str(i[5]), i[6], str(i[7]), i[8], i[9],
@@ -463,14 +447,13 @@ class DbFrame(Frame):
 class Main(Tk):
     def __init__(self):
         Tk.__init__(self)
-        self.title("SW Minis Drafter - v1.4")
+        self.title("SW Minis Drafter - v1.6")
         w, h = self.winfo_screenwidth(), self.winfo_screenheight()
         #self.overrideredirect(1)
         self.geometry("%dx%d+0+0" % (w, h - 50))
         self.focus_set()  # <-- move focus to this widget
         self.bind("<Escape>", lambda e: e.widget.quit())
         self.bind('<Return>', lambda x: DbFrame.refreshfilters(self))
-        #print (self.winfo_toplevel())
 
         database = "./DB/SWminis.db"
         self.conn = self.create_connection(database)
@@ -486,11 +469,13 @@ class Main(Tk):
             frame.grid(row=0, column=0, sticky="nsew")
 
         self.db_menubar = Menu(self)
-        self.db_menubar.add_cascade(label="Refresh Filters", command=lambda: DbFrame.refreshfilters(self))
+        #self.db_menubar.add_cascade(label="Refresh Filters", command=lambda: DbFrame.refreshfilters(self))
         # self.db_menubar.add_cascade(label="Load Player File", command=lambda: DbFrame.loadplayer())
         # self.db_menubar.add_command(label="All Minis")
         self.db_menubar.add_command(label="Pack Generator", command=lambda: self.show_frame("PackFrame"))
         self.db_menubar.add_command(label="Mini Maker", command=lambda: self.minimaker())
+        self.db_menubar.add_command(label="Preferences", command=lambda: self.preferences())
+        self.db_menubar.add_command(label="Clear Filters", command=lambda: self.clearfilters())
         self.db_menubar.add_cascade(label="Close", command=lambda: self.safeclose())
 
         self.SETS = ["Alliance and Empire", "Bounty Hunters", "Alliance and Empire", "Champions of the Force",
@@ -572,7 +557,6 @@ class Main(Tk):
                 # append a list, the entry name, then its description. when actually searching the glossary search both
                 self.glossary.append(i.split("\t"))
             file.close()
-        print(self.glossary)
         DbFrame.refreshgloss(self)
 
     def show_frame(self, page_name):  # swaps the left frame from editor to generator controls
@@ -583,6 +567,28 @@ class Main(Tk):
             self.config(menu=self.pack_menubar)
         elif page_name == "DbFrame":
             self.config(menu=self.db_menubar)
+
+    def preferences(self):
+        preferencesWindow = Toplevel(self)
+        preferencesWindow.attributes('-topmost', 'true')
+        preferencesWindow.geometry("750x525")
+
+        self.paths = []
+        file = open("./preferences", encoding="utf8")
+        lines = file.readlines()
+        for i in lines:
+            print("read or write to pref file")
+
+        self.forcepowers = []
+        self.forcepowersfull = []
+        file = open("./minimaker/forcepowers.tsv", encoding="utf8")
+        filelist = file.readlines()
+        for i in filelist:
+            self.forcepowersfull.append(i.split("\t"))
+        file.close()
+    def clearfilters(self):
+        for x in self.colheadVar:
+            x.set("")
 
     def safeclose(self):
         folder = './tmp/'
@@ -640,16 +646,12 @@ class Main(Tk):
         files=[]
 
         for x, i in enumerate(tokenlist):
-            print ("i",i)
-
             for t in os.listdir(source):
                 if os.path.isfile(os.path.join(source, t)) and i in t:
                     files.append(t)
 
-        print ("Tokens: ",files)
         for n in files:
             cmd = "copy "+source+n+" "+destination+"\\"+n
-            print (cmd)
             os.system(cmd)
 
 
@@ -695,28 +697,37 @@ class Main(Tk):
             col = x % 3
             pdf.image("tmp\\" + str(x) + "temp.png", x=col * (width + 2) + 8, y=rowf * (width + 2) * 1.39 + 10, w=width,
                       h=height)
+        key=""
+        for x in range(list.size()):
+            key += str(list.get(x))[1:] + "$"
+            #key += str(list.get(x)).split("_")[1]+"_"
+        key = key[:-1]
+        print ("add keywords: ",key)
+        pdf.set_keywords(key)
         pdf.output(file.name)
 
     def loadlist(self, lb):
         file = filedialog.askopenfile(initialdir="./custom", defaultextension='.sav')
-        lines = file.readlines()
-        lb.delete(0, 'end')
-        for n, x in enumerate(lines):
-            x = x[:-1]
-            lb.insert(n, x)
+        extension = (str(file.name).split(".")[-1]).lower()
+        print (file.name)
+        if extension == "pdf":
+            pdf_toread = PdfFileReader(open(file.name, "rb"))
+            pdf_info = pdf_toread.getDocumentInfo()
+            if '/Keywords' in pdf_info:
+                print(pdf_info['/Keywords'])
+                keyword = str(pdf_info['/Keywords']).split("$")
+                for n,x in enumerate(keyword):
+                    lb.insert(n, x)
+        elif extension == "sav":
+            lines = file.readlines()
+            lb.delete(0, 'end')
+            for n, x in enumerate(lines):
+                x = x[:-1]
+                lb.insert(n, x)
 
-    def savelist(self, lb):
-        list = lb
-        file = filedialog.asksaveasfile(initialdir="./custom", title='Name your cardlist',
-                                        defaultextension='.sav')
-        if file is None:  # asksaveasfile return `None` if dialog closed with "cancel".
-            return
-        filename = str(file.name.split("/")[-1:]).split(".")[0][2:]
-
-        for x in range(list.size()):
-            file.write(list.get(x)[1:])
-            file.write("\n")
-        file.close()
+    # def savelist(self, lb):
+    #     list = lb
+    #     self.lb3selected.delete(1.0, END)
 
     def preview(self, list):
         try:
@@ -921,9 +932,6 @@ class Main(Tk):
                      lambda x: [addforce(forcelb.get(forcelb.index(forcelb.curselection())),
                                          forcelb.index(forcelb.curselection())), refresh()])
 
-        # for x, i in enumerate(self.forcepowersfull):
-        #     print (x,i)
-        #     forcelb.insert(x, i[0])
 
         for x, i in enumerate(self.forcepowersfull):
             forcelb.insert(x, i[0])
@@ -951,7 +959,6 @@ class Main(Tk):
 
         def changeportrait():
             f = filedialog.askopenfilename()
-            print (f)
             self.portrait = f
             refresh()
 
@@ -1017,7 +1024,6 @@ class Main(Tk):
             if not self.race.get() == "":
                 draw.text((145+styleoffset, 100 + txtoffset), self.race.get(), (0, 0, 0), font=tech_small)
                 txtoffset += offsetmod
-            print (self.melee.get())
             if self.melee.get() == "1":
                 extra=str(self.attacks.get())
                 if not extra == "0":
@@ -1028,7 +1034,6 @@ class Main(Tk):
             for x in self.abilities:
                 read = self.abilitiesfull[x[1]]
                 lines = textwrap.wrap(read[0] + ". " + read[1], width=48-styleoffset)
-                print(lines)
                 for line in lines:
                     width, height = tech_small.getsize(line)
                     # draw.text(((w - width) / 2, y_text), line, font=font, fill=FOREGROUND)
@@ -1051,21 +1056,10 @@ class Main(Tk):
                     draw.text((145+styleoffset, 125 + txtoffset), line, (0, 0, 0), font=tech_small)
                     txtoffset += height
 
-            #     content = self.forcepowersfull.index(x)
-            #     print(content)
-            #     draw.text((145 + styleoffset, 120 + txtoffset), str(x), (0, 0, 0), font=smfont)
-            #     txtoffset += 20
-             #draw.text((332, 25), str(minicost + extracost), (0, 0, 0), font=font)
-
             render = ImageTk.PhotoImage(imback)
             img = Label(makerWindow, image=render, width=imgwidth / 4, height=imgheight / 2)
             img.image = render
             img.grid(row=0, column=0, rowspan=12)
-
-            # render = ImageTk.PhotoImage(im_portrait)
-            # img_portrait = Label(makerWindow, image=render, width=portrait_width / 2, height=portrait_height / 2)
-            # img_portrait.image = render
-            # img_portrait.grid(row=0, column=0, rowspan=12)
 
         refresh()
 
@@ -1073,4 +1067,3 @@ class Main(Tk):
 if __name__ == "__main__":
     app = Main()
     mainloop()
-
