@@ -25,15 +25,39 @@ from PyPDF2 import PdfFileReader
 
 
 class PackFrame(Frame):
+    packlist = []
     def __init__(self, parent, controller):
         Frame.__init__(self, parent)
         self.controller = controller
         width, height = self.winfo_screenwidth(), self.winfo_screenheight()
-        controller.bottomframe = Frame(self, width=width, height=height)
-        controller.bottomframe.grid(row=0, column=0)
-        # def modAll(var, state):
-        #     for index, i in enumerate(var):
-        #         var[index].set(state)
+
+        controller.draftframe = Frame(self, width=width, height=height)
+        controller.draftframe.grid(row=0, column=0)
+
+        monofont = font.Font(family='Courier', size=8)
+
+        draftedboxes = LabelFrame(controller.draftframe, text="Drafted Boxes")
+        controller.lb2_1 = Listbox(draftedboxes, width=20, height=20)
+        controller.lb2_1.configure(font=monofont)
+        controller.lb2_1.grid(row=0, column=0)
+        controller.lb2_1.bind('<<ListboxSelect>>', lambda x: PackFrame.showpack(self, controller.lb2_1, controller.lb2_2))
+        draftedboxes.grid(row=0, column=0)
+
+        boxcontents = LabelFrame(controller.draftframe, text="Pack Contents")
+        controller.lb2_2 = Listbox(boxcontents, width=20, height=20)
+        controller.lb2_2.configure(font=monofont)
+        controller.lb2_2.grid(row=0, column=0)
+        controller.lb2_2.bind('<<ListboxSelect>>', lambda x: PackFrame.showpack(self))#,controller.lb2_2.grab_current()))
+        boxcontents.grid(row=0, column=1)
+
+    def showpack(self, packnum, packminis):
+        char = packnum.get(packnum.index(packnum.curselection()))
+        index = int(char.split(" ")[1])
+        print ("this is the pack I need to show",index)
+        print (self.packlist[0])
+        print ("pack contents: ",self.packlist[index-1])
+        #packminis.insert()
+
 
     def getbox(self):
         answer = simpledialog.askinteger("Input", "Open 1-20 boxes",
@@ -41,9 +65,7 @@ class PackFrame(Frame):
                                          minvalue=1, maxvalue=20)
         if answer == None: answer = 1
         self.qty_packs = int(answer)
-        self.pack_menubar.entryconfig(4, label=str(self.qty_packs))
-
-
+        self.pack_menubar.entryconfig(8, label=str(self.qty_packs))
 
     def generate(self, conn, varlist, pack_type):
         setmenu_VarList = varlist
@@ -58,14 +80,15 @@ class PackFrame(Frame):
         for x, i in enumerate(setmenu_VarList):
             if i.get() == 1:
                 setsenabled.append(self.SETS[0][x])
-
+        pdfwrite=FALSE
+        self.packlist = []
         for p in range(1, self.qty_packs + 1):
-            print("opening pack", p, "of", self.qty_packs)
-            pdf.add_page()
+            if pdfwrite: pdf.add_page()
 
             minilist = []
-            selected_set = random.choice(setsenabled)
-            short = self.SETS[1][self.SETS[0].index(selected_set)]
+            selected_set = random.choice(setsenabled[:-8])
+            print("Pack", p, "of", self.qty_packs,": ", selected_set)
+            selected_set_short = self.SETS[1][self.SETS[0].index(selected_set)]
             if packtype.get() == str(0):  # 0 is standard pack
                 cur.execute(
                     "SELECT \"id\", \"set\", \"name\" FROM minis_list WHERE \"SET\" = \"" + selected_set + "\" AND \"rarity\" = \"common\"")
@@ -82,18 +105,18 @@ class PackFrame(Frame):
                 rares = cur.fetchall()
                 for x in range(4):
                     mini = random.choice(commons)
-                    commons.remove(mini)
+                    #commons.remove(mini) # no duplicates
                     minilist.append(mini)
                 for x in range(2):
                     mini = random.choice(uncommons)
-                    uncommons.remove(mini)  # no duplicates
+                    #uncommons.remove(mini)  # no duplicates
                     minilist.append(mini)
                 minilist.append(random.choice(rares))
 
                 # CREATES THE CARDS AND RENDERS THEM ON SCREEN
                 rw = 0
                 for x, i in enumerate(minilist):
-                    card = ("./cards/" + short + "{:02d}".format(i[0]) + ".jpg")
+                    card = ("./cards/" + selected_set_short + "{:02d}".format(i[0]) + ".jpg")
                     im = Image.open(card)
                     width, height = im.size
                     sizesm = int(width / 6), int(height / 3)
@@ -105,37 +128,38 @@ class PackFrame(Frame):
 
                     imback.save("tmp\\" + str(p) + "_" + str(x) + "temp.png")
                     imbacksm.save("tmp\\" + str(p) + "_" + str(x) + "temp_sm.png")
-                    load = Image.open("tmp\\" + str(p) + "_" + str(x) + "temp.png")
+                    #load = Image.open("tmp\\" + str(p) + "_" + str(x) + "temp.png")
                     load_sm = Image.open("tmp\\" + str(p) + "_" + str(x) + "temp_sm.png")
-                    render = ImageTk.PhotoImage(load)
+                    #render = ImageTk.PhotoImage(load) #might have to put back in later
                     render_sm = ImageTk.PhotoImage(load_sm)
-                    img = Label(self.bottomframe, image=render_sm, width=int(width / 6), height=int(height / 3))
+                    img = Label(self.draftframe, image=render_sm, width=int(width / 6), height=int(height / 3))
                     img.image = render_sm
                     col = x % 4
                     if (x % 4 == 0): rw += 1
-                    img.grid(row=rw, column=col)
+                    img.grid(row=rw-1, column=col+2)
+                if pdfwrite: #READS THE TEMPORARY PNGS CREATED AND PUTS THEM ON A PDF PAGE
+                    rw = 0
+                    size = 65
+                    width = 64
+                    height = width * 1.39
+                    pdf.text(x=10, y=5, txt="Pack " + str(p) + " - " + str(selected_set))
+                    pdf.rect(x=73, y=191, w=width, h=height)
+                    pdf.rect(x=138, y=191, w=width, h=height)
+                    offset = 0
+                    for x, i in enumerate(minilist):
+                        col = x % 3
+                        if (x % 3 == 0): rw += 1
+                        pdf.image("tmp\\" + str(p) + "_" + str(x) + "temp.png", x=col * size + 8,
+                                  y=rw * size * 1.39 - 80, w=width, h=height)  # , x=10, y=8, w=100)
+                        if x == 4 or x == 6: offset += 4
+                        pdf.text(x=143, y=201 + x * 4 + offset, txt=str(i[2]) + "  [" + str(i[0]) + "]")
 
-                # READS THE TEMPORARY PNGS CREATED AND PUTS THEM ON A PDF PAGE
-                rw = 0
-                size = 65
-                width = 64
-                height = width * 1.39
-                pdf.text(x=10, y=5, txt="Pack " + str(p) + " - " + str(selected_set))
-                pdf.rect(x=73, y=191, w=width, h=height)
-                pdf.rect(x=138, y=191, w=width, h=height)
-                offset = 0
-                for x, i in enumerate(minilist):
-                    col = x % 3
-                    if (x % 3 == 0): rw += 1
-                    pdf.image("tmp\\" + str(p) + "_" + str(x) + "temp.png", x=col * size + 8,
-                              y=rw * size * 1.39 - 80, w=width, h=height)  # , x=10, y=8, w=100)
-                    if x == 4 or x == 6: offset += 4
-                    pdf.text(x=143, y=201 + x * 4 + offset, txt=str(i[2]) + "  [" + str(i[0]) + "]")
-
+            self.packlist.append(minilist)
+            self.lb2_1.insert(p,"Pack "+str(p))
+        #print("the packlist",self.packlist)
         time = datetime.datetime.now()
         time = (str(time)[-6:])
         pdf.output("./packs/packname" + time + ".pdf")
-
 
 class DbFrame(Frame):
     def __init__(self, parent, controller):
@@ -159,10 +183,8 @@ class DbFrame(Frame):
         controller.headers = ["name", "set", "id", "faction", "rarity", "cost", "size", "hit points", "defense",
                               "attack",
                               "damage", "special abilities", "force points", "force powers", "qty"]
-        controller.headers_labels = ["name", "set", "id", "faction", "rarity", "cost", "size", "hp", "df",
-                                     "at",
-                                     "dm", "special abilities", "fp", "force powers", "qty"]
-        +3
+        controller.headers_labels = ["name", "set", "id", "faction", "rarity", "cost", "size", "hp", "df", "at", "dm", "special abilities", "fp", "force powers", "qty"]
+        #+3
         columnwidth = [49, 24, 4, 19, 12, 5, 9, 3, 3, 3, 3, 37, 3, 33, 5]
         # columnwidth = [30, 15, 4, 19, 14, 6, 9, 10, 10, 3, 3, 36, 3, 38, 5]
 
@@ -311,6 +333,8 @@ class DbFrame(Frame):
         controller.glossary_filter.grid(row=23, column=4,columnspan=2)
         glossbox.grid(row=0,column=5,rowspan=21)
 
+        controller.draft_seed = StringVar()
+        controller.draft_seed.trace_add('write', lambda x, y, z: print("hi"))#DbFrame.refreshgloss(controller))
 
     def testtracing (self):
         print ("hit")
@@ -355,41 +379,82 @@ class DbFrame(Frame):
         cur.execute(command)
         table = cur.fetchall()
 
+        abilitiesfull = []
+        abilitiesdescriptions = []
+        file = open("./DB/specialabilities.tsv", encoding="utf8")
+        filelist = file.readlines()
+        for i in filelist:
+            term = i.split("\t")
+            # print (term)
+            abilitiesfull.append(term[0])
+            abilitiesdescriptions.append(term[1])
+        file.close
+
+        forcefull = []
+        forcedescriptions = []
+        file = open("./DB/specialabilities.tsv", encoding="utf8")
+        filelist = file.readlines()
+        for i in filelist:
+            term = i.split("\t")
+            # print (term)
+            abilitiesfull.append(term[0])
+            abilitiesdescriptions.append(term[1])
+        file.close
+
+        simple = {"Unique","Droid","Melee Attack","Gungan","Wookie","Commander Effect"}
         character = """"""
         for x, i in enumerate(table):
-            print (x,i)
-            character += "\"name\": [{"+i[1]+"}]\n"
-            character += "\"set\": [{" + i[2] + "}]\n"
-            character += "\"id\": [{" + str(i[3]) + "}]\n"
-            character += "\"faction\": [{" + i[4] + "}]\n"
-            character += "\"rarity\": [{" + str(i[5]) + "}]\n"
-            character += "\"cost\": [{" + str(i[6]) + "}]\n"
-            character += "\"size\": [{" + str(i[7]) + "}]\n"
-            character += "\"hit points\": [{" + str(i[8]) + "}]\n"
-            character += "\"defense\": [{" + str(i[9]) + "}]\n"
-            character += "\"attack\": [{" + str(i[10]) + "}]\n"
-            character += "\"damage\": [{" + str(i[11]) + "}]\n"
+            #abilities = []
+            #abilities.append(str(i[12]).split(";"))
 
-            character += "\"abilities\": [\n"
+            setshort = self.SETS[1][self.SETS[0].index(i[2])]+"{:02d}".format(i[3])+".jpg"
+            character += "{\n"
+            character += "     \"name\": \""+i[1]+"\",\n"
+            character += "     \"avatar id\": \""+setshort+"\",\n"
+            character += "     \"set\": \"" + i[2] + "\",\n"
+            character += "     \"id\": " + str(i[3]) + ",\n"
+            character += "     \"faction\": \"" + i[4] + "\",\n"
+            character += "     \"rarity\": \"" + str(i[5]) + "\",\n"
+            character += "     \"cost\": " + str(i[6]) + ",\n"
+            character += "     \"size\": \"" + str(i[7]) + "\",\n"
+            character += "     \"hit points\": " + str(i[8]) + ",\n"
+            character += "     \"defense\": " + str(i[9]) + ",\n"
+            character += "     \"attack\": " + str(i[10]) + ",\n"
+            character += "     \"damage\": " + str(i[11])
+
             first = True
-            for y in str(i[12]).split(";"):
-                if first: first = False
-                else: character += ",\n"
-                character += "     { \"name\": \""+str(y)+"\" }"
-            character += "]\n"
-            character += "\"force points\": [{" + str(i[13]) + "}]\n"
+            if i[12]:
+                character += ",\n     \"abilities\": ["
+                for y in str(i[12]).split(";"):
+                    if first:
+                        first = False
+                        character += "\n"
+                    else: character += ",\n"
 
-            character += "\"force powers\": [\n"
-            first = True
-            for y in str(i[14]).split(";"):
-                if first:
-                    first = False
-                else:
-                    character += ",\n"
-                character += "     { \"name\": \"" + str(y) + "\" }"
-            character += "]\n\n"
+                    is_simple = len(simple.intersection(y))
+                    #print(simple.intersection(str(y)))
+                    if str(y) in simple:
+                        character += "          { \"name\": \"" + str(y) + "\" }"
+                    else:
+                        pos = abilitiesfull.index(str(y))
+                        description = abilitiesdescriptions[pos].strip("\n")
+                        character += "          { \"name\": \""+str(y)+"\", \"desc\": \""+description+"\" }"
+                character += "\n     ]"
 
-        f = open("demofile2.txt", "w")
+            if i[13] != 0:
+                character += ",\n     \"force points\": " + str(i[13])
+                if i[14]:
+                    character += ",\n     \"force powers\": [\n"
+                    first = True
+                    for y in str(i[14]).split(";"):
+                        if first:
+                            first = False
+                        else:
+                            character += ",\n"
+                        character += "          { \"name\": \"" + str(y) + "\" }"
+                    character += "\n     ]"
+            character += "\n},\n\n"
+        f = open("demofile2.txt", "w", encoding="utf-8")
         f.write(character)#"Now the file has more content!")
         f.close()
             # character += "\"abilities": [
@@ -505,8 +570,6 @@ class DbFrame(Frame):
                                     i[0], str(i[1])[0:36]+extra_a, str(i[2]), i[3], str(i[4]), str(i[5]), i[6], str(i[7]), i[8], i[9],
                                     i[10], i[11], str(i[12])[0:25]+extra_b, i[13], str(i[14])[0:25]+extra_c))
 
-
-
 class Main(Tk):
     def __init__(self):
         Tk.__init__(self)
@@ -536,11 +599,15 @@ class Main(Tk):
         # self.db_menubar.add_cascade(label="Load Player File", command=lambda: DbFrame.loadplayer())
         # self.db_menubar.add_command(label="All Minis")
         self.db_menubar.add_command(label="Drafter", command=lambda: self.show_frame("PackFrame"))
+        self.db_menubar.add_command(label="DB Browser", command=lambda: self.show_frame("DbFrame"))
         self.db_menubar.add_command(label="Mini Maker", command=lambda: self.minimaker())
+
+        self.db_menubar.add_command(label="- - -")
+
         self.db_menubar.add_command(label="Preferences", command=lambda: self.preferences())
         self.db_menubar.add_command(label="Clear Filters", command=lambda: self.clearfilters())
         self.db_menubar.add_cascade(label="Close", command=lambda: self.safeclose())
-        self.db_menubar.add_command(label="makeandruslist", command=lambda: DbFrame.exportscript(self))
+        #self.db_menubar.add_command(label="makeandruslist", command=lambda: DbFrame.exportscript(self))
 
         self.SETS = ["Alliance and Empire", "Bounty Hunters", "Alliance and Empire", "Champions of the Force",
                      "Clone Strike", "The Clone Wars",
@@ -585,6 +652,12 @@ class Main(Tk):
         setmenu_VarList = []  # a list containing lists of variables for checkbox states
         packtype = StringVar(self)
 
+        self.pack_menubar.add_command(label="Drafter", command=lambda: self.show_frame("PackFrame"))
+        self.pack_menubar.add_command(label="DB Browser", command=lambda: self.show_frame("DbFrame"))
+        self.pack_menubar.add_command(label="Mini Maker", command=lambda: self.minimaker())
+
+        self.pack_menubar.add_command(label="- - -")
+
         self.pack_menubar.add_cascade(label="Sets", underline=0, menu=setlist_menu)
         self.pack_menubar.add_cascade(label="Pack Type", underline=0, menu=pack_menu)
         self.pack_menubar.add_command(label="Change Box Count",
@@ -594,8 +667,6 @@ class Main(Tk):
         self.pack_menubar.add_command(label="Go", underline=0,
                                       command=lambda: PackFrame.generate(self, self.conn, setmenu_VarList, packtype))
         self.pack_menubar.add_separator()
-        self.pack_menubar.add_command(label="DB Browser", command=lambda: self.show_frame("DbFrame"))
-
         self.pack_menubar.add_command(label="quit", command=lambda: self.safeclose())
 
         for _ in enumerate(self.SETS[0]): setmenu_VarList.append(IntVar(self))
@@ -1128,7 +1199,6 @@ class Main(Tk):
             img.grid(row=0, column=0, rowspan=12)
 
         refresh()
-
 
 if __name__ == "__main__":
     app = Main()
