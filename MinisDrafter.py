@@ -25,141 +25,276 @@ from PyPDF2 import PdfFileReader
 
 
 class PackFrame(Frame):
-    packlist = []
     def __init__(self, parent, controller):
         Frame.__init__(self, parent)
         self.controller = controller
         width, height = self.winfo_screenwidth(), self.winfo_screenheight()
 
+        PackFrame.packlist = []
+        PackFrame.packstoopen = StringVar()
+        PackFrame.packstoopen.set(3)
+        PackFrame.boxminiids = []
+        PackFrame.selecteddraftpickids = []
+
         controller.draftframe = Frame(self, width=width, height=height)
         controller.draftframe.grid(row=0, column=0)
-
         monofont = font.Font(family='Courier', size=8)
 
+        #PackFrame.packlist.append("test")
+        #controller.qty_packs
+
+        draftcontrols = LabelFrame(controller.draftframe, text="Draft Controls")
+        Entry(draftcontrols, width=5, textvariable=PackFrame.packstoopen).grid(sticky="W", row=0, column=0)
+        Button(draftcontrols,width=10,text="Go", command=lambda: PackFrame.generate(controller, controller.conn, controller.setmenu_VarList, 0)).grid(sticky="W", row=1, column=0)
+        Button(draftcontrols, width=10, text="Export", command=lambda: PackFrame.exportdraft("test")).grid(sticky="W", row=2, column=0)
+
+        draftcontrols.grid(row=0, column=0)
+
+
         draftedboxes = LabelFrame(controller.draftframe, text="Drafted Boxes")
-        controller.lb2_1 = Listbox(draftedboxes, width=20, height=20)
+        controller.lb2_1 = Listbox(draftedboxes, width=40, height=20)
         controller.lb2_1.configure(font=monofont)
         controller.lb2_1.grid(row=0, column=0)
-        controller.lb2_1.bind('<<ListboxSelect>>', lambda x: PackFrame.showpack(self, controller.lb2_1, controller.lb2_2))
-        draftedboxes.grid(row=0, column=0)
+        controller.lb2_1.bind('<<ListboxSelect>>', lambda x: PackFrame.showpack(controller, controller.lb2_1, controller.lb2_2,controller.draftframe))
+        draftedboxes.grid(row=0, column=1)
 
         boxcontents = LabelFrame(controller.draftframe, text="Pack Contents")
-        controller.lb2_2 = Listbox(boxcontents, width=20, height=20)
+        controller.lb2_2 = Listbox(boxcontents, width=40, height=20)
         controller.lb2_2.configure(font=monofont)
         controller.lb2_2.grid(row=0, column=0)
-        controller.lb2_2.bind('<<ListboxSelect>>', lambda x: PackFrame.showpack(self))#,controller.lb2_2.grab_current()))
-        boxcontents.grid(row=0, column=1)
+        controller.lb2_2.bind('<Double-1>', lambda x : PackFrame.senddraftcharacter(controller, controller.lb2_3,controller.lb2_2)) #x: PackFrame.senddraftcharacter(controller.lb2_2.get(controller.lb2_2.index(controller.lb2_2.curselection()))))
+        #controller.lb2_2.bind('<<ListboxSelect>>', PREVIEW
+        boxcontents.grid(row=0, column=2)
 
-    def showpack(self, packnum, packminis):
-        char = packnum.get(packnum.index(packnum.curselection()))
-        index = int(char.split(" ")[1])
-        print ("this is the pack I need to show",index)
-        print (self.packlist[0])
-        print ("pack contents: ",self.packlist[index-1])
-        #packminis.insert()
+        draftselections = LabelFrame(controller.draftframe, text="Draft Selections")
+        controller.lb2_3 = Listbox(draftselections, width=40, height=20)
+        controller.lb2_3.configure(font=monofont)
+        controller.lb2_3.grid(row=0, column=0)
+        controller.lb2_3.bind('<<ListboxSelect>>', lambda x: PackFrame.preview_d(self, controller.lb2_3))  # ,controller.lb2_2.grab_current()))
+        draftselections.grid(row=1, column=1)
 
+        im = Image.open("./cards\\nopreview.png")
+        imgwidth, imgheight = im.size
+        im = im.resize((int(imgwidth / 3), int(imgheight / 3)), Image.ANTIALIAS)
+        # imgwidth, imgheight = im.size
+        im = ImageTk.PhotoImage(im)
+        PackFrame.preview_draftlabel = Label(controller.draftframe, image=im)
+        PackFrame.preview_draftlabel.image = im
+        PackFrame.preview_draftlabel.grid(row=1, column=2)
 
-    def getbox(self):
-        answer = simpledialog.askinteger("Input", "Open 1-20 boxes",
-                                         parent=self,
-                                         minvalue=1, maxvalue=20)
-        if answer == None: answer = 1
-        self.qty_packs = int(answer)
-        self.pack_menubar.entryconfig(8, label=str(self.qty_packs))
+    def exportdraft(self):
+        #size = PackFrame.packlist.size()
+        draftpacks = PackFrame.packlist
+        file = filedialog.asksaveasfile(initialdir="./packs", title='Name your cardlist',defaultextension='.pdf')
+        if file is None:  # asksaveasfile return `None` if dialog closed with "cancel".
+            return
+        print ("filename:",file.name)
+        filename = str(file.name.split("/")[-1:]).split(".")[0][2:]
+        pdf = FPDF()
+        pdf.set_font('Arial', 'B', 10)
+
+        """get the length of overall minis to print... then structure for loops around that."""
+        # saves the temp files
+        page = 0
+        width = 63
+        height = width * 1.39
+        row = 3
+        for n in draftpacks:
+            for x, i in enumerate(n):
+                print ("x:",x,"i:",i)
+                card = ("./cards/" + str(i) + ".jpg")
+                #setshort = minilist[x][1]
+                #card = ("./cards/" + setshort + "{:02d}".format(i[0]) + ".jpg")
+                # setshort = self.SETS[1][self.SETS[0].index(i[2])] + "{:02d}".format(i[3]) + ".jpg"
+                # print (setshort)
+                print ("Adding",card)
+                im = Image.open(card)
+                imgwidth, imgheight = im.size
+                imback = im.crop((imgwidth / 2, 0, imgwidth, imgheight))
+                imback.save("tmp\\" + str(x) + "temp.png")
+                if (x // 9 + 1) > page:
+                    page += 1
+                    pdf.add_page()
+                    row += -3
+                    pdf.text(x=10, y=7, txt=str(filename) + " -  Draft pack " + str(page))
+                rowf = x // 3 + row
+                col = x % 3
+                pdf.image("tmp\\" + str(x) + "temp.png", x=col * (width + 2) + 8, y=rowf * (width + 2) * 1.39 + 10, w=width,
+                          h=height)
+
+        # for x in range(list.size()):
+        #     draftpacks += str(list.get(x))[1:] + "$"
+        # draftpacks = draftpacks[:-1]
+        print("add keywords: ", draftpacks)
+        pdf.set_keywords(draftpacks)
+        pdf.output(file.name)
+
+    def preview_d(self, list):
+        try:
+            char = list.get(list.index(list.curselection()))
+        except:
+            print("changed lists")
+        else:
+            print (PackFrame.selecteddraftpickids)
+            index = list.index(list.curselection())
+            print (char, index)
+            cardid = PackFrame.selecteddraftpickids[index]
+            card = ("./cards/" + cardid + ".jpg")
+            im = Image.open(card)
+            imgwidth, imgheight = im.size
+            imback = im.crop((imgwidth / 2, 0, imgwidth, imgheight))
+            imback = imback.resize((int(imgwidth / 6), int(imgheight / 3)), Image.ANTIALIAS)
+            imback = ImageTk.PhotoImage(imback)
+            PackFrame.preview_draftlabel.configure(image=imback)
+            PackFrame.preview_draftlabel.image = imback
+
+    def senddraftcharacter(self, destlistbox, sourcelistbox):
+        index = sourcelistbox.index(sourcelistbox.curselection())
+        cardid = PackFrame.boxminiids[index]
+        name = sourcelistbox.get(index)
+        print ("Sending Mini",name,"with ID",cardid,"index:",index )
+        count = destlistbox.size()
+        destlistbox.insert(count, name)
+        PackFrame.selecteddraftpickids.insert(count, cardid)
+        
+    def showpack(self, packnum, lstbox,frame):
+        try:
+            char = packnum.get(packnum.index(packnum.curselection()))
+        except:
+            print("changed lists")
+        else:
+            char = packnum.get(packnum.index(packnum.curselection()))
+            index = int(char.split(" ")[1])
+            set = char.split("(")[1]
+            set = set[:-1]
+            lstbox.delete(0, 1000)
+            PackFrame.boxminiids.clear()
+            print("Showing Pack", index,"("+set+")")
+
+            rw = 0
+            for x, i in enumerate(PackFrame.packlist[index-1]):
+                print ("x: "+str(x)+", "+"i: ",i)
+                lstbox.insert(x,i[2])
+
+                cardid = self.SETS[1][self.SETS[0].index(set)]+ "{:02d}".format(i[0])
+                PackFrame.boxminiids.append(cardid)
+                card = ("./cards/" + cardid  + ".jpg")
+                im = Image.open(card)
+                width, height = im.size
+                sizesm = int(width / 6), int(height / 3)
+                imgback = im.crop((width / 2, 0, width, height))
+                imgback = imgback.resize(sizesm, resample=Image.ANTIALIAS)
+                imgback.save("tmp\\" + "_" + str(x) + "temp.png")
+                load = Image.open("tmp\\" + "_" + str(x) + "temp.png")
+                render = ImageTk.PhotoImage(load)
+                img = Label(frame, image=render, width=int(width / 6), height=int(height / 3))
+                img.image = render
+                col = x % 4
+                if (x % 4 == 0): rw += 1
+                img.grid(row=rw - 1, column=col + 3)
 
     def generate(self, conn, varlist, pack_type):
         setmenu_VarList = varlist
         cur = conn.cursor()
         packtype = pack_type
         cardlist = []
-        pdf = FPDF()
-        pdf.set_font('Arial', 'B', 10)
+        qty_packs = int(PackFrame.packstoopen.get())
+        pdfwrite = FALSE
+        if pdfwrite:
+            pdf = FPDF()
+            pdf.set_font('Arial', 'B', 10)
         #self.qty_packs = PackFrame.qty_packs
         """Grab the sets that are turned on"""
         setsenabled = []
         for x, i in enumerate(setmenu_VarList):
             if i.get() == 1:
                 setsenabled.append(self.SETS[0][x])
-        pdfwrite=FALSE
-        self.packlist = []
-        for p in range(1, self.qty_packs + 1):
+        PackFrame.packlist.clear()
+        minilist = []
+        print("Generating", qty_packs, "packs")
+        for p in range(1, qty_packs + 1):
             if pdfwrite: pdf.add_page()
-
-            minilist = []
+            minilist.clear()
             selected_set = random.choice(setsenabled[:-8])
-            print("Pack", p, "of", self.qty_packs,": ", selected_set)
+            print("Pack", p, "of", qty_packs,": ", selected_set)
             selected_set_short = self.SETS[1][self.SETS[0].index(selected_set)]
-            if packtype.get() == str(0):  # 0 is standard pack
+            if packtype == 0:  # 0 is standard pack
                 cur.execute(
                     "SELECT \"id\", \"set\", \"name\" FROM minis_list WHERE \"SET\" = \"" + selected_set + "\" AND \"rarity\" = \"common\"")
                 commons = cur.fetchall()
                 cur.execute(
                     "SELECT \"id\", \"set\", \"name\" FROM minis_list WHERE \"SET\" = \"" + selected_set + "\" AND \"rarity\" = \"uncommon\"")
                 uncommons = cur.fetchall()
-                if random.choice([1, 2, 3]) == 1:
-                    rare = "very rare"
-                else:
-                    rare = "rare"
+                if random.choice([1, 2, 3]) == 1: rare = "very rare"
+                else: rare = "rare"
                 cur.execute(
                     "SELECT \"id\", \"set\", \"name\" FROM minis_list WHERE \"SET\" = \"" + selected_set + "\" AND \"rarity\" = \"" + rare + "\"")
                 rares = cur.fetchall()
                 for x in range(4):
                     mini = random.choice(commons)
-                    #commons.remove(mini) # no duplicates
+                    commons.remove(mini) # no duplicates
                     minilist.append(mini)
                 for x in range(2):
                     mini = random.choice(uncommons)
-                    #uncommons.remove(mini)  # no duplicates
+                    uncommons.remove(mini)  # no duplicates
                     minilist.append(mini)
-                minilist.append(random.choice(rares))
+                mini = random.choice(rares)
+                rares.remove(mini)
+                minilist.append(mini)
+                print ("Pack", p, "minilist: ",minilist)
+                #PackFrame.packlist.append([])
+                tmplst=[]
+                for x in range(7):
+                    tmplst.append(minilist[x])
+                PackFrame.packlist.append(tmplst)
 
                 # CREATES THE CARDS AND RENDERS THEM ON SCREEN
-                rw = 0
-                for x, i in enumerate(minilist):
-                    card = ("./cards/" + selected_set_short + "{:02d}".format(i[0]) + ".jpg")
-                    im = Image.open(card)
-                    width, height = im.size
-                    sizesm = int(width / 6), int(height / 3)
-                    imback = im.crop((width / 2, 0, width, height))
-
-                    imbacksm = imback.resize(sizesm, resample=Image.ANTIALIAS)
-                    imfront = im.crop((0, 0, width / 2, height))
-                    cardlist.append(imback)
-
-                    imback.save("tmp\\" + str(p) + "_" + str(x) + "temp.png")
-                    imbacksm.save("tmp\\" + str(p) + "_" + str(x) + "temp_sm.png")
-                    #load = Image.open("tmp\\" + str(p) + "_" + str(x) + "temp.png")
-                    load_sm = Image.open("tmp\\" + str(p) + "_" + str(x) + "temp_sm.png")
-                    #render = ImageTk.PhotoImage(load) #might have to put back in later
-                    render_sm = ImageTk.PhotoImage(load_sm)
-                    img = Label(self.draftframe, image=render_sm, width=int(width / 6), height=int(height / 3))
-                    img.image = render_sm
-                    col = x % 4
-                    if (x % 4 == 0): rw += 1
-                    img.grid(row=rw-1, column=col+2)
-                if pdfwrite: #READS THE TEMPORARY PNGS CREATED AND PUTS THEM ON A PDF PAGE
+                if pdfwrite:
                     rw = 0
-                    size = 65
-                    width = 64
-                    height = width * 1.39
-                    pdf.text(x=10, y=5, txt="Pack " + str(p) + " - " + str(selected_set))
-                    pdf.rect(x=73, y=191, w=width, h=height)
-                    pdf.rect(x=138, y=191, w=width, h=height)
-                    offset = 0
                     for x, i in enumerate(minilist):
-                        col = x % 3
-                        if (x % 3 == 0): rw += 1
-                        pdf.image("tmp\\" + str(p) + "_" + str(x) + "temp.png", x=col * size + 8,
-                                  y=rw * size * 1.39 - 80, w=width, h=height)  # , x=10, y=8, w=100)
-                        if x == 4 or x == 6: offset += 4
-                        pdf.text(x=143, y=201 + x * 4 + offset, txt=str(i[2]) + "  [" + str(i[0]) + "]")
+                        setshort = minilist[x][1]
+                        card = ("./cards/" + setshort + "{:02d}".format(i[0]) + ".jpg")
+                        im = Image.open(card)
+                        width, height = im.size
+                        #sizesm = int(width / 6), int(height / 3)
+                        imback = im.crop((width / 2, 0, width, height))
 
-            self.packlist.append(minilist)
-            self.lb2_1.insert(p,"Pack "+str(p))
-        #print("the packlist",self.packlist)
+                        # imbacksm = imback.resize(sizesm, resample=Image.ANTIALIAS)
+                        # imfront = im.crop((0, 0, width / 2, height))
+                        cardlist.append(imback)
+
+                        imback.save("tmp\\" + str(p) + "_" + str(x) + "temp.png")
+                        # imbacksm.save("tmp\\" + str(p) + "_" + str(x) + "temp_sm.png")
+                        # #load = Image.open("tmp\\" + str(p) + "_" + str(x) + "temp.png")
+                        # load_sm = Image.open("tmp\\" + str(p) + "_" + str(x) + "temp_sm.png")
+                        # #render = ImageTk.PhotoImage(load) #might have to put back in later
+                        # render_sm = ImageTk.PhotoImage(load_sm)
+                        # img = Label(self.draftframe, image=render_sm, width=int(width / 6), height=int(height / 3))
+                        # img.image = render_sm
+                        # col = x % 4
+                        # if (x % 4 == 0): rw += 1
+                        # img.grid(row=rw-1, column=col+2)
+                    #if pdfwrite: #READS THE TEMPORARY PNGS CREATED AND PUTS THEM ON A PDF PAGE
+                        rw = 0
+                        size = 65
+                        width = 64
+                        height = width * 1.39
+                        pdf.text(x=10, y=5, txt="Pack " + str(p) + " - " + str(selected_set))
+                        pdf.rect(x=73, y=191, w=width, h=height)
+                        pdf.rect(x=138, y=191, w=width, h=height)
+                        offset = 0
+                        for x, i in enumerate(minilist):
+                            col = x % 3
+                            if (x % 3 == 0): rw += 1
+                            pdf.image("tmp\\" + str(p) + "_" + str(x) + "temp.png", x=col * size + 8,
+                                      y=rw * size * 1.39 - 80, w=width, h=height)  # , x=10, y=8, w=100)
+                            if x == 4 or x == 6: offset += 4
+                            pdf.text(x=143, y=201 + x * 4 + offset, txt=str(i[2]) + "  [" + str(i[0]) + "]")
+            self.lb2_1.insert(p,"Pack "+str(p)+" ("+str(minilist[0][1])+")")
+        print("\n")
         time = datetime.datetime.now()
         time = (str(time)[-6:])
-        pdf.output("./packs/packname" + time + ".pdf")
+        if pdfwrite:pdf.output("./packs/packname" + time + ".pdf")
 
 class DbFrame(Frame):
     def __init__(self, parent, controller):
@@ -253,10 +388,9 @@ class DbFrame(Frame):
         controller.lb1.configure(font=monofont)
         controller.lb1.grid(row=0, column=0)
         controller.lb1.bind('<<ListboxSelect>>', lambda x: controller.preview(controller.lb1))
-        # controller.lb1.get(controller.lb1.index(controller.lb1.curselection()))))  # addme
         controller.lb1.bind('<Double-1>', lambda x: controller.sendcharacter(
             controller.lb1.get(controller.lb1.index(controller.lb1.curselection()))))
-        datarows = []
+        #datarows = []
 
         # def loadplayer():
         #     filename = filedialog.askopenfilename(initialdir="./players")
@@ -455,12 +589,8 @@ class DbFrame(Frame):
                     character += "\n     ]"
             character += "\n},\n\n"
         f = open("demofile2.txt", "w", encoding="utf-8")
-        f.write(character)#"Now the file has more content!")
+        f.write(character)
         f.close()
-            # character += "\"abilities": [
-            #
-            # { "name": """+i[12]+"},\n" """
-            # { \"name\": """
 
     def refreshfilters(self):
         player = self.var_player.get()
@@ -595,9 +725,6 @@ class Main(Tk):
             frame.grid(row=0, column=0, sticky="nsew")
 
         self.db_menubar = Menu(self)
-        #self.db_menubar.add_cascade(label="Refresh Filters", command=lambda: DbFrame.refreshfilters(self))
-        # self.db_menubar.add_cascade(label="Load Player File", command=lambda: DbFrame.loadplayer())
-        # self.db_menubar.add_command(label="All Minis")
         self.db_menubar.add_command(label="Drafter", command=lambda: self.show_frame("PackFrame"))
         self.db_menubar.add_command(label="DB Browser", command=lambda: self.show_frame("DbFrame"))
         self.db_menubar.add_command(label="Mini Maker", command=lambda: self.minimaker())
@@ -649,7 +776,7 @@ class Main(Tk):
         pack_menu = Menu(self.pack_menubar)
         self.config(menu=self.db_menubar)
 
-        setmenu_VarList = []  # a list containing lists of variables for checkbox states
+        self.setmenu_VarList = []  # a list containing lists of variables for checkbox states
         packtype = StringVar(self)
 
         self.pack_menubar.add_command(label="Drafter", command=lambda: self.show_frame("PackFrame"))
@@ -660,23 +787,18 @@ class Main(Tk):
 
         self.pack_menubar.add_cascade(label="Sets", underline=0, menu=setlist_menu)
         self.pack_menubar.add_cascade(label="Pack Type", underline=0, menu=pack_menu)
-        self.pack_menubar.add_command(label="Change Box Count",
-                                      command=lambda: PackFrame.getbox(self))
-        self.pack_menubar.add_command(label="1")
-        self.qty_packs = 1
-        self.pack_menubar.add_command(label="Go", underline=0,
-                                      command=lambda: PackFrame.generate(self, self.conn, setmenu_VarList, packtype))
+
         self.pack_menubar.add_separator()
         self.pack_menubar.add_command(label="quit", command=lambda: self.safeclose())
 
-        for _ in enumerate(self.SETS[0]): setmenu_VarList.append(IntVar(self))
-        for i in setmenu_VarList: i.set(1)
+        for _ in enumerate(self.SETS[0]): self.setmenu_VarList.append(IntVar(self))
+        for i in self.setmenu_VarList: i.set(1)
 
-        setlist_menu.add_command(label="All", command=lambda: modAll(setmenu_VarList, 1))
-        setlist_menu.add_command(label="None", command=lambda: modAll(setmenu_VarList, 0))
+        setlist_menu.add_command(label="All", command=lambda: modAll(self.setmenu_VarList, 1))
+        setlist_menu.add_command(label="None", command=lambda: modAll(self.setmenu_VarList, 0))
         setlist_menu.add_separator()
         for index, i in enumerate(self.SETS[0]):
-            setlist_menu.add_checkbutton(label=i, variable=setmenu_VarList[index], onvalue=1, offvalue=0)
+            setlist_menu.add_checkbutton(label=i, variable=self.setmenu_VarList[index], onvalue=1, offvalue=0)
 
         for index, i in enumerate(self.packtypes):
             pack_menu.add_radiobutton(label=i, variable=packtype, value=index)
@@ -853,14 +975,14 @@ class Main(Tk):
             if '/Keywords' in pdf_info:
                 print(pdf_info['/Keywords'])
                 keyword = str(pdf_info['/Keywords']).split("$")
-                for n,x in enumerate(keyword):
-                    lb.insert(n, x)
+                for x,i in enumerate(keyword):
+                    lb.insert(x, i)
         elif extension == "sav":
             lines = file.readlines()
             lb.delete(0, 'end')
-            for n, x in enumerate(lines):
-                x = x[:-1]
-                lb.insert(n, x)
+            for x, i in enumerate(lines):
+                i = i[:-1]
+                lb.insert(x, i)
 
     # def savelist(self, lb):
     #     list = lb
@@ -875,10 +997,10 @@ class Main(Tk):
             if len(char) > 100:  # basically are you trying to preview something in the DB view or the squad view
                 set = char[43:70].rstrip(" ")  # interprets the line sent and takes the set out of it.
                 id = "{:02d}".format(int(char[71:73].strip(" ")))
-                setshort = self.SETS[1][self.SETS[0].index(set)] + id
+                cardid = self.SETS[1][self.SETS[0].index(set)] + id
             else:
-                setshort = char.split("_")[1]
-            card = ("./cards/" + setshort + ".jpg")
+                cardid = char.split("_")[1]
+            card = ("./cards/" + cardid + ".jpg")
             im = Image.open(card)
             imgwidth, imgheight = im.size
             imback = im.crop((imgwidth / 2, 0, imgwidth, imgheight))
@@ -896,10 +1018,10 @@ class Main(Tk):
         if len(char) > 100:  # basically are you trying to preview something in the DB view or the squad view
             set = char[43:70].rstrip(" ")  # interprets the line sent and takes the set out of it.
             id = "{:02d}".format(int(char[71:73].strip(" ")))
-            setshort = self.SETS[1][self.SETS[0].index(set)] + id
+            cardid = self.SETS[1][self.SETS[0].index(set)] + id
         else:
-            setshort = char.split("_")[1]
-        card = ("./cards/" + setshort + ".jpg")
+            cardid = char.split("_")[1]
+        card = ("./cards/" + cardid + ".jpg")
         im = Image.open(card)
         imgwidth, imgheight = im.size
         imback = im.crop((imgwidth / 2, 0, imgwidth, imgheight))
