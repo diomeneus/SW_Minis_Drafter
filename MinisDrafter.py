@@ -92,26 +92,59 @@ class PackFrame(Frame):
         filename = str(file.name.split("/")[-1:]).split(".")[0][2:]
         pdf = FPDF()
         pdf.set_font('Arial', 'B', 10)
-
+        sets = ["Alliance and Empire", "Bounty Hunters", "Alliance and Empire", "Champions of the Force",
+                     "Clone Strike", "The Clone Wars",
+                     "The Force Unleashed", "Galaxy at War", "Imperial Entanglements", "Jedi Academy",
+                     "Knights of the Old Republic", "Legacy of the Force",
+                     "Masters of the Force", "Revenge of the Sith", "Rebel Storm", "Dark Times", "Universe",
+                     "Clone Wars Starter", "Clone Wars Scenario", "Battle of Hoth", "Clone Wars Battles",
+                     "The Attack on Teth", "Showdown at Teth Palace", "The Crystal Caves of Ilum", "Affinity"], ["ae",
+                                                                                                                 "bh",
+                                                                                                                 "ae",
+                                                                                                                 "cotf",
+                                                                                                                 "cs",
+                                                                                                                 "cw",
+                                                                                                                 "fu",
+                                                                                                                 "gaw",
+                                                                                                                 "ie",
+                                                                                                                 "ja",
+                                                                                                                 "kotor",
+                                                                                                                 "lotf",
+                                                                                                                 "motf",
+                                                                                                                 "rots",
+                                                                                                                 "rs",
+                                                                                                                 "tdt",
+                                                                                                                 "uh",
+                                                                                                                 "cwsp",
+                                                                                                                 "cwmp",
+                                                                                                                 "boh",
+                                                                                                                 "cwbp",
+                                                                                                                 "aot",
+                                                                                                                 "stp",
+                                                                                                                 "cci",
+                                                                                                                 "affinity"]
         """get the length of overall minis to print... then structure for loops around that."""
         # saves the temp files
         page = 0
         width = 63
         height = width * 1.39
         row = 3
+        minin=0
         for n in draftpacks:
+            # pdf.add_page()
+            #
+            # pdf.text(x=10, y=7, txt=str(filename) + " -  Draft pack " + str(page))
+
             for x, i in enumerate(n):
-                print ("x:",x,"i:",i)
-                card = ("./cards/" + str(i) + ".jpg")
-                #setshort = minilist[x][1]
-                #card = ("./cards/" + setshort + "{:02d}".format(i[0]) + ".jpg")
-                # setshort = self.SETS[1][self.SETS[0].index(i[2])] + "{:02d}".format(i[3]) + ".jpg"
-                # print (setshort)
-                print ("Adding",card)
+                minin+=1
+                print ("x:",x,"i:",i,"mini number:",minin)
+                setshort = sets[1][sets[0].index(i[1])]
+                card = ("./cards/" + setshort + "{:02d}".format(i[0]) + ".jpg")
+                #print ("Adding",card)
                 im = Image.open(card)
                 imgwidth, imgheight = im.size
                 imback = im.crop((imgwidth / 2, 0, imgwidth, imgheight))
-                imback.save("tmp\\" + str(x) + "temp.png")
+                imback.save("tmp\\" + str(minin) + "temp.png")
                 if (x // 9 + 1) > page:
                     page += 1
                     pdf.add_page()
@@ -119,14 +152,20 @@ class PackFrame(Frame):
                     pdf.text(x=10, y=7, txt=str(filename) + " -  Draft pack " + str(page))
                 rowf = x // 3 + row
                 col = x % 3
-                pdf.image("tmp\\" + str(x) + "temp.png", x=col * (width + 2) + 8, y=rowf * (width + 2) * 1.39 + 10, w=width,
+                #print ("drawing image at x:", (col * (width + 2) + 8),"y:", (rowf * (width + 2) * 1.39 + 10))
+                pdf.image("tmp\\" + str(minin) + "temp.png", x=col * (width + 2) + 8, y=rowf * (width + 2) * 1.39 + 10,
+                          w=width,
                           h=height)
+            pdf.add_page()
+            # page += 1
+            # row += -3
 
-        # for x in range(list.size()):
-        #     draftpacks += str(list.get(x))[1:] + "$"
-        # draftpacks = draftpacks[:-1]
+
+        #pdf.image("tmp\\" + str(x) + "temp.png", x=col * (width + 2) + 8, y=rowf * (width + 2) * 1.39 + 10, w=width,
+        #          h=height)
+
         print("add keywords: ", draftpacks)
-        pdf.set_keywords(draftpacks)
+        #pdf.set_keywords(draftpacks)
         pdf.output(file.name)
 
     def preview_d(self, list):
