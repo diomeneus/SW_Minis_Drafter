@@ -70,7 +70,8 @@ class PackFrame(Frame):
         controller.lb2_3 = Listbox(draftselections, width=40, height=20)
         controller.lb2_3.configure(font=monofont)
         controller.lb2_3.grid(row=0, column=0)
-        controller.lb2_3.bind('<<ListboxSelect>>', lambda x: PackFrame.preview_d(self, controller.lb2_3))  # ,controller.lb2_2.grab_current()))
+        controller.lb2_3.bind('<<ListboxSelect>>', lambda x: PackFrame.preview_d(self, controller.lb2_3))
+        controller.lb2_3.bind('<Double-1>', lambda x : PackFrame.removedraftcharacter(controller, controller.lb2_2,controller.lb2_3))
         draftselections.grid(row=1, column=1)
 
         im = Image.open("./cards\\nopreview.png")
@@ -177,7 +178,7 @@ class PackFrame(Frame):
             print (PackFrame.selecteddraftpickids)
             index = list.index(list.curselection())
             print (char, index)
-            cardid = PackFrame.selecteddraftpickids[index]
+            cardid = PackFrame.selecteddraftpickids[index][0]
             card = ("./cards/" + cardid + ".jpg")
             im = Image.open(card)
             imgwidth, imgheight = im.size
@@ -187,13 +188,33 @@ class PackFrame(Frame):
             PackFrame.preview_draftlabel.configure(image=imback)
             PackFrame.preview_draftlabel.image = imback
 
-    def senddraftcharacter(self, destlistbox, sourcelistbox):
+    def removedraftcharacter(self, destlistbox, sourcelistbox):
         index = sourcelistbox.index(sourcelistbox.curselection())
-        cardid = PackFrame.boxminiids[index]
+        cardid = [PackFrame.boxminiids[index], PackFrame.boxminiids[-1]]
         name = sourcelistbox.get(index)
-        print ("Sending Mini",name,"with ID",cardid,"index:",index )
+        print("Sending Mini", name, "with ID", cardid[0], "index:", index, "from pack", cardid[1])
         count = destlistbox.size()
         destlistbox.insert(count, name)
+        sourcelistbox.delete(sourcelistbox.index(index))
+        PackFrame.boxminiids.delete()
+        """YOU STILL NEED TO REMOVE IT FROM THE LIST OF MINIS IN BOXE$S, THIS IS JUST FOR THE LISTBOX"""
+        # PackFrame.boxminiids.[index]
+        PackFrame.selecteddraftpickids.insert(count, cardid)
+
+    def senddraftcharacter(self, destlistbox, sourcelistbox):
+        index = sourcelistbox.index(sourcelistbox.curselection())
+        cardid = [PackFrame.boxminiids[index],PackFrame.boxminiids[-1]]
+        name = sourcelistbox.get(index)
+        print ("Sending Mini",name,"with ID",cardid[0],"index:",index,"from pack",cardid[1] )
+        count = destlistbox.size()
+        destlistbox.insert(count, name)
+        sourcelistbox.delete(sourcelistbox.index(index))
+        PackFrame.boxminiids.remove(cardid[0]) #removes it from the preview box, could just remove from master and refresh though
+        print("packlist:", PackFrame.packlist[cardid[1]-1])
+        PackFrame.packlist.pop(cardid[1]-1)
+        print ("packlist:", PackFrame.packlist[cardid[1]-1])
+        print (PackFrame.boxminiids)
+        #PackFrame.boxminiids.[index]
         PackFrame.selecteddraftpickids.insert(count, cardid)
         
     def showpack(self, packnum, lstbox,frame):
@@ -231,6 +252,8 @@ class PackFrame(Frame):
                 col = x % 4
                 if (x % 4 == 0): rw += 1
                 img.grid(row=rw - 1, column=col + 3)
+            PackFrame.boxminiids.append(index)
+            print(PackFrame.boxminiids)
 
     def generate(self, conn, varlist, pack_type):
         setmenu_VarList = varlist
@@ -1268,20 +1291,7 @@ class Main(Tk):
             attack = self.attack.get()
             damage = self.damage.get()
             force = self.force.get()
-            # extracost = 0
-            #
-            # ranks_hp = hitpoints / 10 - 1
-            # ranks_def = defense - 13
-            # ranks_atk = attack - 4
-            # ranks_dmg = damage / 10 - 1
-            # dmgtax = 0.25 + float(self.melee.get())
-            # cost_hp = ranks_hp ** 2 / 2
-            # cost_def = ranks_def ** 2 / 2
-            # cost_atk = ranks_atk ** 2 / 2
-            # cost_dmg = ranks_dmg ** 2
-            # cost_dmgtax = dmgtax * (ranks_hp + ranks_def + ranks_atk + ranks_dmg)
 
-            #minicost = round(cost_hp + cost_def + cost_atk + cost_dmg + cost_dmgtax + force + 5)
             if self.cardchanged:
                 card = ("./minimaker/templates/02_" + str(self.faction.get()) + ".png")
                 self.cardchange = False
